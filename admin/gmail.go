@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -21,11 +20,7 @@ import (
 // Example usage:
 //   go build -o go-api-demo *.go
 //   go-api-demo -clientid="my-clientid" -secret="my-secret" gmail
-func gmailMain(client *http.Client, argv []string) {
-	if len(argv) != 0 {
-		fmt.Fprintln(os.Stderr, "Usage: gmail")
-		return
-	}
+func gmailMain(client *http.Client) {
 
 	svc, err := gmail.New(client)
 	if err != nil {
