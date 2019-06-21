@@ -10,6 +10,7 @@ import (
 
 // Snippet part of email
 type Snippet struct {
+	TreadID string
 	Subject string
 	From    string
 	To      string
@@ -24,6 +25,49 @@ type Message struct {
 	ID       string
 	*gmail.Message
 	InternalDate int64
+}
+
+// getGMails return emails from db by user
+func getGMail(user User, treadID string) []Message {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "getGMails",
+	}
+
+	defer SaveLog(proc)
+
+	var gdata []Message
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("messages")
+	defer DB.Close()
+
+	// group tredids
+
+	err := DBC.Find(bson.M{"owner": user.Email, "threadid": treadID}).Sort("-internaldate").All(&gdata)
+	if err != nil {
+		HandleError(proc, "get snippets", err, true)
+		return gdata
+	}
+
+	/*
+		if len(gdata) != 0 {
+
+			for _, g := range gdata {
+
+				s := ParseSnippet(g)
+
+				snippets = append(snippets, s)
+
+			}
+
+		}
+	*/
+	return gdata
+
 }
 
 // getGMails return emails from db by user
@@ -74,6 +118,7 @@ func ParseSnippet(g Message) Snippet {
 
 	var s Snippet
 
+	s.TreadID = g.ThreadID
 	s.Text = g.Message.Snippet
 
 	if len(g.Payload.Headers) != 0 {

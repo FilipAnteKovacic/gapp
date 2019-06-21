@@ -24,25 +24,70 @@ type Page struct {
 	View string
 }
 
-//EPage struct for email pages
-type EPage struct {
+//EsPage struct for email pages
+type EsPage struct {
 	URL    string
 	Logo   string
 	Name   string
 	View   string
+	User   User
 	Emails []Snippet
+}
+
+//EPage struct for email pages
+type EPage struct {
+	URL   string
+	Logo  string
+	Name  string
+	View  string
+	User  User
+	Email []Message
 }
 
 // MailController handle other requests
 var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
-	emails := getGMails(user)
+	email := getGMail(user, r.FormValue("treadID"))
 
 	p := EPage{
-		Name:   "Email",
-		View:   "email",
+		Name:  "Email",
+		View:  "email",
+		URL:   os.Getenv("URL"),
+		User:  user,
+		Email: email,
+	}
+
+	parsedTemplate, err := template.ParseFiles(
+		"template/index.html",
+		"template/views/"+p.View+".html",
+	)
+
+	if err != nil {
+		log.Println("Error ParseFiles:", err)
+		return
+	}
+
+	err = parsedTemplate.Execute(w, p)
+
+	if err != nil {
+		log.Println("Error Execute:", err)
+		return
+	}
+
+})
+
+// MailsController handle other requests
+var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
+	emails := getGMails(user)
+
+	p := EsPage{
+		Name:   "Emails",
+		View:   "emails",
 		URL:    os.Getenv("URL"),
+		User:   user,
 		Emails: emails,
 	}
 
