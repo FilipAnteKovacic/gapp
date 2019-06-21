@@ -1,0 +1,199 @@
+.btn-compose {
+	text-transform: uppercase;
+	letter-spacing: 2px;
+}
+
+
+.inbox-menu {
+	border-radius: @border-radius-base;
+	border: 1px solid @border-darker;
+	background: @gray-50;
+	a {
+		color: @gray-dark;
+		display: block;
+		padding: 10px 16px;
+		&.active {font-weight: 700;}
+	}
+
+	.inbox-menu-item {
+		position: relative;
+		display: block;
+
+		span {
+			float: right;
+		}
+		&:hover {
+			text-decoration: none;
+			color: @gray-dark;
+			background-color: @gray-100;
+		}
+	}
+
+	.collapsible-menu {
+		border-top: 1px solid @border-lighter;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		span.inbox-leftbar-category {
+			a {
+				padding: 8px 16px;
+				display: inline;
+				&.category-heading {
+					float: left;			
+					text-transform: uppercase;
+					color: @gray-light;
+					font-size: @font-size-mini;
+					letter-spacing: 2px;
+					line-height: 16px;
+					&:hover, &.active, &:focus {text-decoration: none;}
+				}
+
+			}
+			.tooltip {min-width: 68px;}
+		}
+	}
+}
+
+.well-inbox {
+	margin-top: 24px;
+	padding: 0;
+	background: @gray-50;
+	box-shadow: none;
+	border: 1px solid @border-darker;
+	border-radius: @border-radius-base;
+
+	a i {
+		color: @text-color;
+	}
+
+	.contextual-progress {
+		border: none;
+		padding: 16px;
+		margin: 0px;
+
+		.progress-title {
+			font-size: @font-size-mini;
+			font-weight: 400;
+		}
+
+		.progress-percentage a {
+			&:hover {text-decoration: none;}
+			float: right;
+			font-size: @font-size-mini;
+		}
+
+		.progress {
+			margin-top: 8px !important;
+		}
+	}
+}
+
+
+
+.panel-inbox {
+	.panel-body {
+		background: #fff;
+		padding: 0;
+		.inbox-compose-form {
+		}
+	}
+	.inbox-mail-heading {
+		margin: 0;
+		padding: 8px;
+		border-radius: @border-radius-base @border-radius-base 0 0;
+		background: @gray-50;
+		border-bottom: 1px solid @border-darker;
+
+		.btn .checkbox-inline {padding-top: 0; height: 16px; margin-top: -5px;}
+
+	}
+	.inbox-mail-footer {
+		margin: 0;
+		padding: 8px;
+		border-radius: 0 0 @border-radius-base @border-radius-base;
+		background: @gray-50;
+		border-top: 1px solid @border-darker;
+
+		.btn .checkbox-inline {padding-top: 0; height: 16px; margin-top: -5px;}
+
+	}
+
+}
+
+.panel-inbox-read {
+	.panel-body {
+		background: #fff;
+		.inbox-read-heading {
+			margin: -24px -24px 24px;
+			padding: 8px;
+			border-radius: @border-radius-base @border-radius-base 0 0;
+			background: @gray-50;
+			border-bottom: 1px solid @border-darker;
+
+			.btn .checkbox-inline {padding-top: 0; height: 16px; margin-top: -5px;}
+
+		}
+		.inbox-read-footer {
+			margin: 0;
+			padding: 8px;
+			border-radius: 0 0 @border-radius-base @border-radius-base;
+			background: @gray-50;
+			border-top: 1px solid @border-darker;
+
+			.btn .checkbox-inline {padding-top: 0; height: 16px; margin-top: -5px;}
+
+		}
+
+		.inbox-read-title {
+			margin: 0;
+		}
+		.inbox-read-details {
+			.inbox-read-sender-avatar {float: left; height: 28px; width: 28px; margin-right: 5px;}
+			.inbox-read-sender-name {float: left; display: inline-block; padding: 4px 0; font-weight: 700; }
+			.inbox-read-sender-email {display: inline-block; padding: 4px 0; color: @gray; }
+			.inbox-read-sent-info {float: left; display: inline-block; padding: 4px 0; font-size: @font-size-base; color: @gray; }
+			.btn-group {float: right;}
+
+
+		}
+		.msg-attachments {
+			.well .list-inline {margin: 0;}
+		}
+	}
+	
+}
+
+.table-inbox {
+	.inbox-msg-attach, .inbox-msg-time {.hidden-xs()}
+	.inbox-msg-time {.text-right()}
+	.unread {
+		.inbox-msg-from, .inbox-msg-time {font-weight: bold;}
+		
+	}
+	.inbox-msg-snip {.label {margin-right: 5px;}}
+
+	.inbox-from-name {font-weight: bold; padding-bottom: 5px;}
+	
+	.inbox-msg-check {vertical-align: middle;}
+
+	tbody > tr > td {border: none; cursor: pointer; padding: 9px 8px;}
+	tbody > tr:hover > td {background-color: @gray-100;}
+	tbody > tr:last-child > td:first-child, tbody > tr:last-child > td:last-child {border-radius: 0;}
+}
+
+
+
+.input-search-mail {
+	padding: 0 !important;
+	margin-bottom: 24px;
+	input.form-control {
+		padding-right: 24px ; 
+	}
+	a {
+		position: absolute;
+		margin-top: -24px;
+		font-size: @font-size-base;
+		right: 0;
+		margin-right: 24px;
+		color: @gray-light;
+	}
+}
