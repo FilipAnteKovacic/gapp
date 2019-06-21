@@ -1,0 +1,36 @@
+{{define "content"}}
+
+<div class="container">
+
+    <div class="row">
+
+        <h1>Emails</h1>
+
+        {{ range $key, $row := .Emails }}
+
+            <h4>
+                {{ $row.Subject }} 
+                <small>
+                    {{ $row.Text }} 
+                </small>
+            </h4>
+            <h5>
+                From: {{ $row.From }}
+            </h5>
+            <h5>
+                To: {{ $row.From }} 
+            </h5>
+            <h5>
+                {{ $row.Date }} 
+            </h5>
+
+            <hr/>
+
+        {{ end }}
+
+    </div>
+
+
+</div>
+
+{{end}}
