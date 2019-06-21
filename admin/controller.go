@@ -13,28 +13,67 @@ import (
 	"golang.org/x/oauth2/google"
 	gmail "google.golang.org/api/gmail/v1"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 //Page struct for pages
 type Page struct {
-	URL     string
-	Logo    string
-	Name    string
-	View    string
-	Contact template.HTML
+	URL  string
+	Logo string
+	Name string
+	View string
 }
 
-// Controller handle other requests
-var Controller = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//EPage struct for email pages
+type EPage struct {
+	URL    string
+	Logo   string
+	Name   string
+	View   string
+	Emails []Snippet
+}
+
+// MailController handle other requests
+var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
+	emails := getGMails(user)
+
+	p := EPage{
+		Name:   "Email",
+		View:   "email",
+		URL:    os.Getenv("URL"),
+		Emails: emails,
+	}
+
+	parsedTemplate, err := template.ParseFiles(
+		"template/index.html",
+		"template/views/"+p.View+".html",
+	)
+
+	if err != nil {
+		log.Println("Error ParseFiles:", err)
+		return
+	}
+
+	err = parsedTemplate.Execute(w, p)
+
+	if err != nil {
+		log.Println("Error Execute:", err)
+		return
+	}
+
+})
+
+// AuthController handle other requests
+var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	uri := r.RequestURI
 
 	var p Page
 
 	switch uri {
-	case "/":
+	case "/login":
 		p = Page{Name: "Login", View: "login"}
 
 		if r.Method == "POST" {
@@ -87,7 +126,7 @@ var Controller = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				log.Fatalf("Unable to parse client secret file to config: %v", err)
 			}
 
-			config.RedirectURL = os.Getenv("URL") + "auth/" + u.Email + "/"
+			config.RedirectURL = os.Getenv("URL") + "token/" + u.Email + "/"
 
 			u.Config = config
 
@@ -133,8 +172,8 @@ var Controller = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 })
 
-// AuthController handle auth requests
-var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// TokenController handle token requests
+var TokenController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	// URL vars
 	vars := mux.Vars(r)
@@ -153,26 +192,6 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 	UpdateUser(u.ID.Hex(), u)
 
-	http.Redirect(w, r, os.Getenv("URL")+"/login", 301)
+	http.Redirect(w, r, os.Getenv("URL")+"/", 301)
 
 })
-
-//StartApp start app on specify port
-func StartApp() {
-
-	muxRouter := mux.NewRouter().StrictSlash(true)
-
-	muxRouter.Handle("/login", Controller).Methods("GET", "POST")
-	muxRouter.Handle("/register", Controller).Methods("GET", "POST")
-	muxRouter.Handle("/auth/{email}", AuthController).Methods("GET", "POST")
-
-	// add static file prefix
-	muxRouter.PathPrefix("/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static/"))))
-
-	err := http.ListenAndServe(":"+os.Getenv("APP_PORT"), handlers.CompressHandler(muxRouter))
-	if err != nil {
-		log.Fatal("error starting http server :: ", err)
-		return
-	}
-
-}
