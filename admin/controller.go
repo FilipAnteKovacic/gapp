@@ -31,6 +31,7 @@ type EsPage struct {
 	Name   string
 	View   string
 	User   User
+	Stats  GStats
 	Emails []Snippet
 }
 
@@ -48,7 +49,7 @@ type EPage struct {
 var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
-	email := getGMail(user, r.FormValue("treadID"))
+	email := GetGMail(user, r.FormValue("treadID"))
 
 	p := EPage{
 		Name:  "Email",
@@ -81,7 +82,8 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
-	emails := getGMails(user)
+	stats := GetGMailsStats(user)
+	emails := GetGMails(user)
 
 	p := EsPage{
 		Name:   "Emails",
@@ -89,6 +91,7 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		URL:    os.Getenv("URL"),
 		User:   user,
 		Emails: emails,
+		Stats:  stats,
 	}
 
 	parsedTemplate, err := template.ParseFiles(

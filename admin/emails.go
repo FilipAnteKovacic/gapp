@@ -27,8 +27,8 @@ type Message struct {
 	InternalDate int64
 }
 
-// getGMails return emails from db by user
-func getGMail(user User, treadID string) []Message {
+// GetGMail return emails from db by user
+func GetGMail(user User, treadID string) []Message {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -70,8 +70,8 @@ func getGMail(user User, treadID string) []Message {
 
 }
 
-// getGMails return emails from db by user
-func getGMails(user User) []Snippet {
+// GetGMails return emails from db by user
+func GetGMails(user User) []Snippet {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -155,6 +155,75 @@ func ParseSnippet(g Message) Snippet {
 	return s
 }
 
-// Decode msg body
-//sDec, _ := b64.StdEncoding.DecodeString(part.Body.Data)
-//fmt.Println(string(sDec))
+// GStats email owner quick stats
+type GStats struct {
+	MinDate string
+	MaxDate string
+	Count   int
+}
+
+// GetGMailsStats return gmail stats
+func GetGMailsStats(user User) GStats {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "getGMailsStats",
+	}
+
+	defer SaveLog(proc)
+
+	var stats GStats
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("messages")
+	defer DB.Close()
+
+	// group tredids
+
+	msgCount, err := DBC.Find(bson.M{"owner": user.Email}).Sort("-internaldate").Count()
+	if err != nil {
+		HandleError(proc, "get snippets", err, true)
+		return stats
+	}
+
+	stats.Count = msgCount
+
+	if msgCount != 0 {
+
+		var lastMsg Message
+
+		err = DBC.Find(bson.M{"owner": user.Email}).Limit(1).Sort("-internaldate").One(&lastMsg)
+		if err != nil {
+			HandleError(proc, "get snippets", err, true)
+			return stats
+		}
+
+		lastSnp := ParseSnippet(lastMsg)
+		if lastSnp.Date != "" {
+
+			stats.MaxDate = lastSnp.Date
+
+		}
+
+		var firstMsg Message
+
+		err = DBC.Find(bson.M{"owner": user.Email}).Limit(1).Sort("internaldate").One(&firstMsg)
+		if err != nil {
+			HandleError(proc, "get snippets", err, true)
+			return stats
+		}
+
+		firstSnp := ParseSnippet(firstMsg)
+		if firstSnp.Date != "" {
+
+			stats.MinDate = firstSnp.Date
+
+		}
+
+	}
+
+	return stats
+
+}
