@@ -31,12 +31,10 @@ BUILDING CONTINER
     - pull
     docker pull registry.gitlab.com/tmcsolutions/gapp:v1
 
-- counter - pagging
-- first email - last email dates
-- search by from, to, snippet, subject, date
 
-- labels
-- default label
+- combine search&pages
+- disable if not valid page
+
 - serach labels
 
 - email details

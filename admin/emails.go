@@ -71,7 +71,7 @@ func GetGMail(user User, treadID string) []Message {
 }
 
 // GetGMails return emails from db by user
-func GetGMails(user User) []Snippet {
+func GetGMails(user User, label, search string, page int) (int, []Snippet) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -82,6 +82,7 @@ func GetGMails(user User) []Snippet {
 
 	defer SaveLog(proc)
 
+	var gcount int
 	var snippets []Snippet
 	var gdata []Message
 
@@ -90,11 +91,32 @@ func GetGMails(user User) []Snippet {
 	defer DB.Close()
 
 	// group tredids
+	query := bson.M{"owner": user.Email, "message.labelids": label}
 
-	err := DBC.Find(bson.M{"owner": user.Email, "message.labelids": "INBOX"}).Limit(10).Sort("-internaldate").All(&gdata)
+	if search != "" {
+
+		query = bson.M{"$or": []bson.M{
+			bson.M{"message.payload.headers.value": bson.M{"$regex": search}},
+			bson.M{"message.payload.snippet": bson.M{"$regex": search}},
+		},
+			"owner":            user.Email,
+			"message.labelids": label,
+		}
+
+	}
+
+	gcount, err := DBC.Find(query).Sort("-internaldate").Count()
 	if err != nil {
 		HandleError(proc, "get snippets", err, true)
-		return snippets
+		return 0, snippets
+	}
+
+	skip := page * 50
+
+	err = DBC.Find(query).Skip(skip).Limit(50).Sort("-internaldate").All(&gdata)
+	if err != nil {
+		HandleError(proc, "get snippets", err, true)
+		return 0, snippets
 	}
 
 	if len(gdata) != 0 {
@@ -109,7 +131,7 @@ func GetGMails(user User) []Snippet {
 
 	}
 
-	return snippets
+	return gcount, snippets
 
 }
 

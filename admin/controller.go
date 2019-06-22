@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -26,13 +27,15 @@ type Page struct {
 
 //EsPage struct for email pages
 type EsPage struct {
-	URL    string
-	Logo   string
-	Name   string
-	View   string
-	User   User
-	Stats  GStats
-	Emails []Snippet
+	URL       string
+	Logo      string
+	Name      string
+	View      string
+	User      User
+	Stats     GStats
+	Count     int
+	Paggining GPagging
+	Emails    []Snippet
 }
 
 //EPage struct for email pages
@@ -43,6 +46,14 @@ type EPage struct {
 	View  string
 	User  User
 	Email []Message
+}
+
+// GPagging stats
+type GPagging struct {
+	MinCount     int
+	MaxCount     int
+	NextPage     int
+	PreviousPage int
 }
 
 // MailController handle other requests
@@ -81,17 +92,41 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 // MailsController handle other requests
 var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+	label := r.FormValue("label")
+	if label == "" {
+		label = "INBOX"
+	}
+
+	search := r.FormValue("search")
+
+	page := r.FormValue("page")
+
+	if page == "" {
+		page = "0"
+	}
+
+	pg, _ := strconv.Atoi(page)
+
+	gp := GPagging{
+		MinCount:     pg * 50,
+		MaxCount:     (pg * 50) + 50,
+		NextPage:     (pg + 1),
+		PreviousPage: (pg - 1),
+	}
+
 	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
 	stats := GetGMailsStats(user)
-	emails := GetGMails(user)
+	gcount, emails := GetGMails(user, label, search, pg)
 
 	p := EsPage{
-		Name:   "Emails",
-		View:   "emails",
-		URL:    os.Getenv("URL"),
-		User:   user,
-		Emails: emails,
-		Stats:  stats,
+		Name:      "Emails",
+		View:      "emails",
+		URL:       os.Getenv("URL"),
+		User:      user,
+		Emails:    emails,
+		Count:     gcount,
+		Paggining: gp,
+		Stats:     stats,
 	}
 
 	parsedTemplate, err := template.ParseFiles(
