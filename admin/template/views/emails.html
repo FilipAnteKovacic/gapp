@@ -5,7 +5,7 @@
 <div class="page-heading">            
     <h1>Inbox</h1>
 
-	<form action="{{$url}}" method="GET" class="form-horizontal">
+	<form action="{{$url}}/emails" method="GET" class="form-horizontal">
 
 		<div class="input-group mb-lg col-md-4 pull-right">
 			<input name="search" type="text" class="form-control" placeholder="Search mail...">
@@ -65,7 +65,7 @@
 
 							{{ range $key, $row := .Emails }}
 
-								<tr onclick="location.href='{{$url}}/{{ $row.TreadID }}';">
+								<tr onclick="location.href='{{$url}}/email/{{ $row.TreadID }}';">
 									<td class="inbox-msg-from hidden-xs hidden-sm" width="20%">
 										<div>
 											{{ $row.From }}

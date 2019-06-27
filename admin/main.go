@@ -25,8 +25,8 @@ func StartApp() {
 
 	muxRouter.Handle("/token/{email}", TokenController).Methods("GET", "POST")
 
-	muxRouter.Handle("/", MailsController).Methods("GET", "POST")
-	muxRouter.Handle("/{treadID}", MailController).Methods("GET")
+	muxRouter.Handle("/emails", MailsController).Methods("GET", "POST")
+	muxRouter.Handle("/email/{treadID}", MailController).Methods("GET")
 
 	// add static file prefix
 	muxRouter.PathPrefix("/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static/"))))
