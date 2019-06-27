@@ -36,6 +36,8 @@ type EsPage struct {
 	Stats     GStats
 	Count     int
 	Paggining GPagging
+	Label     string
+	Search    string
 	Labels    []string
 	Emails    []Thread
 }
@@ -100,17 +102,17 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	stats := GetGMailsStats(user)
 	labels := GetGMailLabels(user)
 
+	search := r.FormValue("search")
+
 	label := ""
 	label = r.FormValue("label")
 	if label == "" {
 
-		if len(labels) != 0 {
+		if len(labels) != 0 && search == "" {
 			label = labels[0]
 		}
 
 	}
-
-	search := r.FormValue("search")
 
 	page := r.FormValue("page")
 
@@ -134,6 +136,8 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		View:      "emails",
 		URL:       os.Getenv("URL"),
 		User:      user,
+		Search:    search,
+		Label:     label,
 		Labels:    labels,
 		Emails:    emails,
 		Count:     gcount,
