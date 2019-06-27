@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 	"time"
 
@@ -24,20 +23,11 @@ func Sync() {
 
 		for _, user := range users {
 
-			BackupMails(user)
+			BackupGMail(user)
 
 		}
 
 	}
-
-}
-
-// BackupMails save emails to db
-func BackupMails(user User) {
-
-	client := user.Config.Client(context.Background(), user.Token)
-
-	gmailMain(user, client)
 
 }
 
