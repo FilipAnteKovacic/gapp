@@ -23,6 +23,7 @@ type Page struct {
 	Logo string
 	Name string
 	View string
+	User User
 }
 
 //EsPage struct for email pages
@@ -35,7 +36,8 @@ type EsPage struct {
 	Stats     GStats
 	Count     int
 	Paggining GPagging
-	Emails    []Snippet
+	Labels    []string
+	Emails    []Thread
 }
 
 //EPage struct for email pages
@@ -59,8 +61,10 @@ type GPagging struct {
 // MailController handle other requests
 var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
-	email := GetGMail(user, r.FormValue("treadID"))
+	vars := mux.Vars(r)
+
+	user := GetUserByEmail("it@ulixtravel.com")
+	email := GetGMail(user, vars["treadID"])
 
 	p := EPage{
 		Name:  "Email",
@@ -92,9 +96,18 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 // MailsController handle other requests
 var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	label := r.FormValue("label")
+	user := GetUserByEmail("it@ulixtravel.com")
+	stats := GetGMailsStats(user)
+	labels := GetGMailLabels(user)
+
+	label := ""
+	label = r.FormValue("label")
 	if label == "" {
-		label = "INBOX"
+
+		if len(labels) != 0 {
+			label = labels[0]
+		}
+
 	}
 
 	search := r.FormValue("search")
@@ -114,8 +127,6 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		PreviousPage: (pg - 1),
 	}
 
-	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
-	stats := GetGMailsStats(user)
 	gcount, emails := GetGMails(user, label, search, pg)
 
 	p := EsPage{
@@ -123,6 +134,7 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		View:      "emails",
 		URL:       os.Getenv("URL"),
 		User:      user,
+		Labels:    labels,
 		Emails:    emails,
 		Count:     gcount,
 		Paggining: gp,
@@ -145,6 +157,75 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		log.Println("Error Execute:", err)
 		return
 	}
+
+})
+
+// SyncController handle token requests
+var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	// URL vars
+	vars := mux.Vars(r)
+
+	email := vars["email"]
+
+	u := GetUserByEmail(email)
+
+	if r.Method == "POST" {
+
+		query := r.FormValue("query")
+
+		go BackupGMail(u, query)
+
+		http.Redirect(w, r, os.Getenv("URL")+"/emails", 301)
+	}
+
+	p := Page{
+		Name: "Sync",
+		View: "sync",
+		URL:  os.Getenv("URL"),
+		User: u,
+	}
+
+	parsedTemplate, err := template.ParseFiles(
+		"template/index.html",
+		"template/views/"+p.View+".html",
+	)
+
+	if err != nil {
+		log.Println("Error ParseFiles:", err)
+		return
+	}
+
+	err = parsedTemplate.Execute(w, p)
+
+	if err != nil {
+		log.Println("Error Execute:", err)
+		return
+	}
+
+})
+
+// TokenController handle token requests
+var TokenController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	// URL vars
+	vars := mux.Vars(r)
+
+	email := vars["email"]
+	code := r.FormValue("code")
+
+	u := GetUserByEmail(email)
+
+	tok, err := u.Config.Exchange(context.TODO(), code)
+	if err != nil {
+		log.Fatalf("Unable to retrieve token from web: %v", err)
+	}
+
+	u.Token = tok
+
+	UpdateUser(u.ID.Hex(), u)
+
+	http.Redirect(w, r, os.Getenv("URL")+"/sync/"+u.Email, 301)
 
 })
 
@@ -252,29 +333,5 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		log.Println("Error Execute:", err)
 		return
 	}
-
-})
-
-// TokenController handle token requests
-var TokenController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-	// URL vars
-	vars := mux.Vars(r)
-
-	email := vars["email"]
-	code := r.FormValue("code")
-
-	u := GetUserByEmail(email)
-
-	tok, err := u.Config.Exchange(context.TODO(), code)
-	if err != nil {
-		log.Fatalf("Unable to retrieve token from web: %v", err)
-	}
-
-	u.Token = tok
-
-	UpdateUser(u.ID.Hex(), u)
-
-	http.Redirect(w, r, os.Getenv("URL")+"/", 301)
 
 })

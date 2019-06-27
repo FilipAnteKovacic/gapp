@@ -25,11 +25,13 @@
 		<div class="col-md-2">
             <div class="inbox-menu">
                 <div class="collapsible-menu" style="border-top: 0;">
-					<a href="#" class="inbox-menu-item active">Inbox </a>
-					<a href="#" class="inbox-menu-item">Junk </a>
-					<a href="#" class="inbox-menu-item">Drafts</a>
-					<a href="#" class="inbox-menu-item">Sent</a>
-					<a href="#" class="inbox-menu-item">Deleted</a>
+
+					{{ range $LKey, $LName := .Labels }}
+
+					<a href="?label={{ $LName }}" class="inbox-menu-item">{{ $LName }}</a>
+
+					{{ end }}
+
                 </div>
             </div>
 		</div>
@@ -65,7 +67,7 @@
 
 							{{ range $key, $row := .Emails }}
 
-								<tr onclick="location.href='{{$url}}/email/{{ $row.TreadID }}';">
+								<tr onclick="location.href='{{$url}}/email/{{ $row.ThreadID }}';">
 									<td class="inbox-msg-from hidden-xs hidden-sm" width="20%">
 										<div>
 											{{ $row.From }}
@@ -73,10 +75,10 @@
 									</td>
 									<td class="inbox-msg-snip">
 										<p><strong>{{ $row.Subject }} </strong></p>
-										<p>{{ $row.Text }} </p>
+										<p>{{ $row.Snippet }} </p>
 									</td>
 									<td class="inbox-msg-time" width="12%">
-										{{ $row.Date }} 
+										{{ $row.EmailDate }} 
 									</td>
 								</tr>
 								

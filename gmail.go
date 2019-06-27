@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	emailaddress "github.com/mcnijman/go-emailaddress"
 	gmail "google.golang.org/api/gmail/v1"
 )
 
@@ -19,7 +21,7 @@ import (
 // Example usage:
 //   go build -o go-api-demo *.go
 //   go-api-demo -clientid="my-clientid" -secret="my-secret" gmail
-func BackupGMail(user User) {
+func BackupGMail(user User, query string) {
 
 	client := user.Config.Client(context.Background(), user.Token)
 
@@ -29,6 +31,7 @@ func BackupGMail(user User) {
 	}
 
 	DBC := MongoSession()
+	mongoCT := DBC.DB("gmail").C("threads")
 	mongoCM := DBC.DB("gmail").C("messages")
 	mongoCA := DBC.DB("gmail").C("attachments")
 	mongoCL := DBC.DB("gmail").C("labels")
@@ -36,7 +39,7 @@ func BackupGMail(user User) {
 
 	pageToken := ""
 	for {
-		req := svc.Users.Threads.List(user.Email).Q("older_than:11y")
+		req := svc.Users.Threads.List(user.Email).Q(query)
 		if pageToken != "" {
 			req.PageToken(pageToken)
 		}
@@ -48,6 +51,13 @@ func BackupGMail(user User) {
 		log.Printf("Processing %v messages...\n", len(r.Threads))
 		for _, thread := range r.Threads {
 
+			t := Thread{
+				Owner:     user.Email,
+				ThreadID:  thread.Id,
+				HistoryID: thread.HistoryId,
+				Snippet:   thread.Snippet,
+			}
+
 			threadSer := svc.Users.Threads.Get(user.Email, thread.Id)
 
 			thread, err := threadSer.Do()
@@ -55,19 +65,74 @@ func BackupGMail(user User) {
 				log.Fatalf("Unable to retrieve treads: %v", err)
 			}
 
-			if len(thread.Messages) != 0 {
+			t.MsgCount = len(thread.Messages)
+
+			if t.MsgCount != 0 {
 
 				var wgData sync.WaitGroup
 
 				for _, msg := range thread.Messages {
 
 					msgo := Message{
-						MsgID:           msg.Id,
-						Message:         msg,
 						Owner:           user.Email,
+						MsgID:           msg.Id,
 						ThreadID:        msg.ThreadId,
+						HistoryID:       msg.HistoryId,
+						Labels:          msg.LabelIds,
+						Snippet:         msg.Snippet,
+						Payload:         msg.Payload,
 						InternalDateRaw: msg.InternalDate,
-						InternalDate:    time.Unix(msg.InternalDate, 0),
+						InternalDate:    time.Unix(msg.InternalDate/1000, 0),
+					}
+
+					if t.HistoryID == msgo.HistoryID {
+						t.InternalDate = msgo.InternalDate
+						t.InternalDateRaw = msgo.InternalDateRaw
+						t.Labels = msgo.Labels
+
+						if len(msg.Payload.Headers) != 0 {
+
+							for _, h := range msg.Payload.Headers {
+
+								switch h.Name {
+								case "Subject":
+
+									t.Subject = h.Value
+
+									break
+								case "From":
+
+									t.From = h.Value
+
+									emails := emailaddress.Find([]byte(h.Value), false)
+									var emls []string
+									for _, e := range emails {
+										emls = append(emls, e.String())
+									}
+									t.FromEmail = strings.Join(emls, ",")
+
+									break
+								case "To":
+
+									t.To = h.Value
+
+									emails := emailaddress.Find([]byte(h.Value), false)
+									for _, e := range emails {
+										t.ToEmail = append(t.ToEmail, e.String())
+									}
+
+									break
+								case "Date":
+
+									t.EmailDate = h.Value
+
+									break
+								}
+
+							}
+
+						}
+
 					}
 
 					wgData.Add(1)
@@ -100,6 +165,8 @@ func BackupGMail(user User) {
 				}
 
 				wgData.Wait()
+
+				CRUDThread(t, mongoCT)
 			}
 
 		}
@@ -111,15 +178,73 @@ func BackupGMail(user User) {
 	}
 }
 
+type Thread struct {
+	ID              bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Owner           string        `json:"owner" bson:"owner,omitempty"`
+	ThreadID        string        `json:"threadID" bson:"threadID,omitempty"`
+	HistoryID       uint64        `json:"historyID" bson:"historyID,omitempty"`
+	From            string        `json:"from" bson:"from,omitempty"`
+	FromEmail       string        `json:"fromEmail" bson:"fromEmail,omitempty"`
+	To              string        `json:"to" bson:"to,omitempty"`
+	ToEmail         []string      `json:"toEmail" bson:"toEmail,omitempty"`
+	EmailDate       string        `json:"emailDate" bson:"emailDate,omitempty"`
+	Subject         string        `json:"subject" bson:"subject,omitempty"`
+	Snippet         string        `json:"snippet" bson:"snippet,omitempty"`
+	MsgCount        int           `json:"msgCount" bson:"msgCount,omitempty"`
+	Labels          []string      `json:"labels" bson:"labels,omitempty"`
+	InternalDateRaw int64         `json:"internalDateRaw" bson:"internalDateRaw,omitempty"`
+	InternalDate    time.Time     `json:"internalDate" bson:"internalDate,omitempty"`
+}
+
+// CRUDThread save attachment
+func CRUDThread(thread Thread, mongoC *mgo.Collection) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "CRUDThread",
+	}
+
+	queryCheck := bson.M{"threadID": thread.ThreadID}
+
+	actRes := Thread{}
+	err := mongoC.Find(queryCheck).One(&actRes)
+
+	if err != nil {
+
+		err = mongoC.Insert(thread)
+		if err != nil {
+			HandleError(proc, "error while inserting row", err, true)
+			return
+		}
+
+		return
+
+	}
+
+	change := bson.M{"$set": thread}
+	err = mongoC.Update(queryCheck, change)
+	if err != nil {
+		HandleError(proc, "error while updateing row", err, true)
+		return
+	}
+	return
+
+}
+
 //Message structure for messages
 type Message struct {
-	ID              bson.ObjectId  `json:"id" bson:"_id,omitempty"`
-	MsgID           string         `json:"msgID" bson:"msgID,omitempty"`
-	ThreadID        string         `json:"threadID" bson:"threadID,omitempty"`
-	Owner           string         `json:"owner" bson:"owner,omitempty"`
-	InternalDateRaw int64          `json:"internalDateRaw" bson:"internalDateRaw,omitempty"`
-	InternalDate    time.Time      `json:"internalDate" bson:"internalDate,omitempty"`
-	Message         *gmail.Message `json:"message" bson:"message,omitempty"`
+	ID              bson.ObjectId      `json:"id" bson:"_id,omitempty"`
+	Owner           string             `json:"owner" bson:"owner,omitempty"`
+	MsgID           string             `json:"msgID" bson:"msgID,omitempty"`
+	ThreadID        string             `json:"threadID" bson:"threadID,omitempty"`
+	HistoryID       uint64             `json:"historyID" bson:"historyID,omitempty"`
+	Labels          []string           `json:"labels" bson:"labels,omitempty"`
+	Snippet         string             `json:"snippet" bson:"snippet,omitempty"`
+	Payload         *gmail.MessagePart `json:"payload" bson:"payload,omitempty"`
+	InternalDateRaw int64              `json:"internalDateRaw" bson:"internalDateRaw,omitempty"`
+	InternalDate    time.Time          `json:"internalDate" bson:"internalDate,omitempty"`
 }
 
 // CRUDMessages save messages
