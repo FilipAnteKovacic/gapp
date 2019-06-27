@@ -191,7 +191,7 @@ func GetGMailLabels(user User) []string {
 
 	// group tredids
 
-	err := DBC.Find(bson.M{"owner": user.Email}).All(&gdata)
+	err := DBC.Find(bson.M{"owner": user.Email}).Sort("name").All(&gdata)
 	if err != nil {
 		HandleError(proc, "get snippets", err, true)
 		return labels
