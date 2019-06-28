@@ -297,11 +297,12 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 								Data:     attachment.Data,
 							}
 
-							if val, ok := ah["Content-Type"]; ok {
-								a.ContentType = val
+							am := MessageAttachment{
+								Name:    p.Filename,
+								AttacID: a.AttachID,
 							}
 
-							mtread.Attachments = append(mtread.Attachments, a.AttachID)
+							mtread.Attachments = append(mtread.Attachments, am)
 
 							CRUDAttachment(a, mongoCA)
 
@@ -420,26 +421,32 @@ func CRUDThread(thread Thread, mongoC *mgo.Collection) {
 
 // ThreadMessage simplify msg struct from gmail
 type ThreadMessage struct {
-	ID           bson.ObjectId     `json:"id" bson:"_id,omitempty"`
-	Owner        string            `json:"owner" bson:"owner,omitempty"`
-	MsgID        string            `json:"msgID" bson:"msgID,omitempty"`
-	HistoryID    uint64            `json:"historyID" bson:"historyID,omitempty"`
-	ThreadID     string            `json:"threadID" bson:"threadID,omitempty"`
-	Headers      map[string]string `json:"headers" bson:"headers,omitempty"`
-	From         string            `json:"from" bson:"from,omitempty"`
-	FromEmails   []string          `json:"fromEmails" bson:"fromEmails,omitempty"`
-	To           string            `json:"to" bson:"to,omitempty"`
-	ToEmails     []string          `json:"toEmails" bson:"toEmails,omitempty"`
-	EmailDate    string            `json:"emailDate" bson:"emailDate,omitempty"`
-	Subject      string            `json:"subject" bson:"subject,omitempty"`
-	Snippet      string            `json:"snippet" bson:"snippet,omitempty"`
-	Labels       []string          `json:"labels" bson:"labels,omitempty"`
-	Text         string            `json:"text" bson:"text,omitempty"`
-	TextRaw      string            `json:"textRaw" bson:"textRaw,omitempty"`
-	HTML         template.HTML     `json:"html" bson:"html,omitempty"`
-	HTMLRaw      string            `json:"htmlRaw" bson:"htmlRaw,omitempty"`
-	Attachments  []string          `json:"attachments" bson:"attachments,omitempty"`
-	InternalDate time.Time         `json:"internalDate" bson:"internalDate,omitempty"`
+	ID           bson.ObjectId       `json:"id" bson:"_id,omitempty"`
+	Owner        string              `json:"owner" bson:"owner,omitempty"`
+	MsgID        string              `json:"msgID" bson:"msgID,omitempty"`
+	HistoryID    uint64              `json:"historyID" bson:"historyID,omitempty"`
+	ThreadID     string              `json:"threadID" bson:"threadID,omitempty"`
+	Headers      map[string]string   `json:"headers" bson:"headers,omitempty"`
+	From         string              `json:"from" bson:"from,omitempty"`
+	FromEmails   []string            `json:"fromEmails" bson:"fromEmails,omitempty"`
+	To           string              `json:"to" bson:"to,omitempty"`
+	ToEmails     []string            `json:"toEmails" bson:"toEmails,omitempty"`
+	EmailDate    string              `json:"emailDate" bson:"emailDate,omitempty"`
+	Subject      string              `json:"subject" bson:"subject,omitempty"`
+	Snippet      string              `json:"snippet" bson:"snippet,omitempty"`
+	Labels       []string            `json:"labels" bson:"labels,omitempty"`
+	Text         string              `json:"text" bson:"text,omitempty"`
+	TextRaw      string              `json:"textRaw" bson:"textRaw,omitempty"`
+	HTML         template.HTML       `json:"html" bson:"html,omitempty"`
+	HTMLRaw      string              `json:"htmlRaw" bson:"htmlRaw,omitempty"`
+	Attachments  []MessageAttachment `json:"attachments" bson:"attachments,omitempty"`
+	InternalDate time.Time           `json:"internalDate" bson:"internalDate,omitempty"`
+}
+
+// MessageAttachment short attachment struct
+type MessageAttachment struct {
+	Name    string `json:"name" bson:"name,omitempty"`
+	AttacID string `json:"attachID" bson:"attachID,omitempty"`
 }
 
 // CRUDThreadMessage save messages for view
