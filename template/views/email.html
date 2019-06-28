@@ -3,13 +3,41 @@
 {{$url := .URL}}
 
 <div class="page-heading">            
-    <h1>{{.Thread.Subject}}</h1>
+    <h1>Gmail</h1>
+
+	<form action="{{$url}}/emails" method="GET" class="form-horizontal">
+
+		<div class="input-group mb-lg col-md-4 pull-right">
+			<input name="search" type="text" value="" class="form-control" placeholder="Search mail...">
+			<span class="input-group-btn">
+				<button type="submit" class="btn btn-primary">
+					<i class="fa fa-fw fa-search"></i>
+				</button>
+			</span>
+		</div>
+
+	</form>
 </div>
 
 <div class="container-fluid">
                                  
 	<div class="row">
-		<div class="col-md-12">
+		<div class="col-md-2">
+            <div class="inbox-menu">
+                <div class="collapsible-menu" style="border-top: 0;">
+
+					{{ range $LKey, $LName := .Labels }}
+
+					<a href="{{$url}}/emails?label={{ $LName }}" class="inbox-menu-item">{{ $LName }}</a>
+
+					{{ end }}
+
+                </div>
+            </div>
+		</div>
+		<div class="col-md-10">
+        
+            <h2>{{.Thread.Subject}}</h2>
 
             {{ range $key, $row := .Messages }}
 
@@ -28,14 +56,14 @@
                         
                         {{ range $akey, $arow := $row.Attachments }}
 
-                            <a href="{{$url}}/attachment/{{ $arow }}">{{ $akey }}. attach </a>
+                            <a href="{{$url}}/attachment/{{ $arow.AttacID }}">{{ $arow.Name }} </a>
 
                         {{ end }}
 
                         </div>
 
                     {{end}}
-
+                    
                     <div class="panel-body">    
 
                         {{if $row.HTML}}
@@ -47,6 +75,12 @@
                             <pre>
                                 {{ $row.Text }}
                             </pre>
+
+                        {{else if $row.Snippet}}
+
+                            <p>
+                                {{ $row.Snippet }}
+                            </p>
 
                         {{end}}
                         

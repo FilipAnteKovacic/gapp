@@ -3,12 +3,12 @@
 {{$url := .URL}}
 
 <div class="page-heading">            
-    <h1>Inbox</h1>
+    <h1>Gmail</h1>
 
 	<form action="{{$url}}/emails" method="GET" class="form-horizontal">
 
 		<div class="input-group mb-lg col-md-4 pull-right">
-			<input name="search" type="text" class="form-control" placeholder="Search mail...">
+			<input name="search" type="text" value="{{.Search}}" class="form-control" placeholder="Search mail...">
 			<span class="input-group-btn">
 				<button type="submit" class="btn btn-primary">
 					<i class="fa fa-fw fa-search"></i>
@@ -28,7 +28,7 @@
 
 					{{ range $LKey, $LName := .Labels }}
 
-					<a href="?label={{ $LName }}" class="inbox-menu-item">{{ $LName }}</a>
+					<a href="{{$url}}/emails?label={{ $LName }}" class="inbox-menu-item">{{ $LName }}</a>
 
 					{{ end }}
 

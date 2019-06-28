@@ -52,6 +52,7 @@ type EPage struct {
 	Name     string
 	View     string
 	User     User
+	Labels   []string
 	Thread   Thread
 	Messages []ThreadMessage
 }
@@ -70,6 +71,8 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 
 	user := GetUserByEmail("it@ulixtravel.com")
+	labels := GetLabels(user)
+
 	thread := GetThread(vars["treadID"], user.Email)
 	messages := GetThreadMessages(user, vars["treadID"])
 
@@ -78,6 +81,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		View:     "email",
 		URL:      os.Getenv("URL"),
 		User:     user,
+		Labels:   labels,
 		Thread:   thread,
 		Messages: messages,
 	}
