@@ -150,7 +150,6 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 	mongoCT := DBC.DB("gmail").C("threads")
 	mongoCM := DBC.DB("gmail").C("messages")
 	mongoCMR := DBC.DB("gmail").C("messagesRaw")
-	mongoCA := DBC.DB("gmail").C("attachments")
 	mongoCL := DBC.DB("gmail").C("labels")
 
 	// Init thread
@@ -240,82 +239,7 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 			}
 
-			if len(msg.Payload.Parts) != 0 {
-
-				for _, p := range msg.Payload.Parts {
-
-					//base64.StdEncoding.DecodeString(p.Body.Data)
-					//base64.RawURLEncoding.DecodeString(p.Body.Data)
-					switch p.MimeType {
-					case "text/plain":
-
-						mtread.TextRaw = p.Body.Data
-
-						decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
-						if err != nil {
-							mtread.Text = err.Error()
-						} else {
-							mtread.Text = string(decoded)
-						}
-
-						break
-					case "text/html":
-
-						mtread.HTMLRaw = p.Body.Data
-
-						decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
-						if err != nil {
-							mtread.HTML = template.HTML(err.Error())
-						} else {
-							mtread.HTML = template.HTML(string(decoded))
-						}
-
-						break
-
-					default:
-
-						if p.Body.AttachmentId != "" {
-
-							attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msg.Id, p.Body.AttachmentId)
-
-							attachment, err := attachmentSer.Do()
-							if err != nil {
-								HandleError(proc, "Unable to retrieve attachment", err, true)
-							}
-
-							ah := ParseMessageHeaders(p.Headers)
-
-							a := Attachment{
-								Owner:    user.Email,
-								MsgID:    mtread.MsgID,
-								ThreadID: mtread.ThreadID,
-								AttachID: p.Body.AttachmentId,
-								Filename: p.Filename,
-								Size:     attachment.Size,
-								MimeType: p.MimeType,
-								Headers:  ah,
-								Data:     attachment.Data,
-							}
-
-							am := MessageAttachment{
-								Name:    p.Filename,
-								AttacID: a.AttachID,
-							}
-
-							mtread.Attachments = append(mtread.Attachments, am)
-
-							CRUDAttachment(a, mongoCA)
-
-							t.AttchCount++
-
-						}
-
-						break
-					}
-
-				}
-
-			}
+			mtread = ProcessMessageParts(msg.Id, user, msg.Payload.Parts, svc, DBC, mtread)
 
 			if t.HistoryID == mtread.HistoryID {
 
@@ -342,6 +266,103 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 	wgi.Done()
 	return
+
+}
+
+// ProcessMessageParts proccess trough levels of message part
+func ProcessMessageParts(msgID string, user User, parts []*gmail.MessagePart, svc *gmail.Service, DBC *mgo.Session, mtread ThreadMessage) ThreadMessage {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "ProcessMessageParts",
+	}
+
+	defer SaveLog(proc)
+
+	if len(parts) != 0 {
+
+		mongoCA := DBC.DB("gmail").C("attachments")
+
+		for _, p := range parts {
+
+			//base64.StdEncoding.DecodeString(p.Body.Data)
+			//base64.RawURLEncoding.DecodeString(p.Body.Data)
+			switch p.MimeType {
+			case "text/plain":
+
+				mtread.TextRaw = p.Body.Data
+
+				decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
+				if err != nil {
+					mtread.Text = err.Error()
+				} else {
+					mtread.Text = string(decoded)
+				}
+
+				break
+			case "text/html":
+
+				mtread.HTMLRaw = p.Body.Data
+
+				decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
+				if err != nil {
+					mtread.HTML = template.HTML(err.Error())
+				} else {
+					mtread.HTML = template.HTML(string(decoded))
+				}
+
+				break
+
+			default:
+
+				if p.Body.AttachmentId != "" {
+
+					attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msgID, p.Body.AttachmentId)
+
+					attachment, err := attachmentSer.Do()
+					if err != nil {
+						HandleError(proc, "Unable to retrieve attachment", err, true)
+					}
+
+					ah := ParseMessageHeaders(p.Headers)
+
+					a := Attachment{
+						Owner:    user.Email,
+						MsgID:    mtread.MsgID,
+						ThreadID: mtread.ThreadID,
+						AttachID: p.Body.AttachmentId,
+						Filename: p.Filename,
+						Size:     attachment.Size,
+						MimeType: p.MimeType,
+						Headers:  ah,
+						Data:     attachment.Data,
+					}
+
+					am := MessageAttachment{
+						Name:    p.Filename,
+						AttacID: a.AttachID,
+					}
+
+					mtread.Attachments = append(mtread.Attachments, am)
+
+					CRUDAttachment(a, mongoCA)
+
+				}
+
+				break
+			}
+
+			if len(p.Parts) != 0 {
+				mtread = ProcessMessageParts(msgID, user, p.Parts, svc, DBC, mtread)
+			}
+
+		}
+
+	}
+
+	return mtread
 
 }
 
