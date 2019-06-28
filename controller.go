@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -216,6 +218,29 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		log.Println("Error Execute:", err)
 		return
 	}
+
+})
+
+// AttachController get attachment & push to client on download
+var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	// URL vars
+	vars := mux.Vars(r)
+
+	attachID := vars["attachID"]
+
+	a := GetAttachment(attachID)
+
+	w.Header().Set("Content-Disposition", a.ContentType)
+	w.Header().Set("Content-Type", a.MimeType)
+	w.Header().Set("Expires", "0")
+	w.Header().Set("Content-Length", strconv.Itoa(int(a.Size)))
+
+	decoded, err := base64.URLEncoding.DecodeString(a.Data)
+	if err != nil {
+		log.Fatalf("Unable to decode attachment: %v", err)
+	}
+	http.ServeContent(w, r, a.Filename, time.Now(), bytes.NewReader(decoded))
 
 })
 
