@@ -83,10 +83,10 @@ func BackupGMail(syncer Syncer) {
 		log.Fatalf("Unable to create Gmail service: %v", err)
 	}
 
+	syncer.ThreadsCount = 0
+
 	pageToken := ""
 	for {
-
-		syncer.ThreadsCount = 0
 
 		req := svc.Users.Threads.List(user.Email).Q(syncer.Query)
 		if pageToken != "" {
@@ -233,6 +233,7 @@ func BackupGMail(syncer Syncer) {
 	CRUDSyncer(syncer, mongoCS)
 }
 
+// Thread struct for threads from email
 type Thread struct {
 	ID              bson.ObjectId `json:"id" bson:"_id,omitempty"`
 	Owner           string        `json:"owner" bson:"owner,omitempty"`

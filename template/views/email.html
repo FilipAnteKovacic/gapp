@@ -1,35 +1,37 @@
 {{define "content"}}
 
 <div class="page-heading">            
-    <h1>Inbox</h1>
-
-    <div class="input-group mb-lg col-md-4 pull-right">
-        <input type="text" class="form-control" placeholder="Search mail...">
-        <span class="input-group-btn">
-            <a class="btn btn-primary" href="#"><i class="fa fa-fw fa-search"></i></a>
-        </span>
-    </div>
-
+    <h1>{{.Thread.Subject}}</h1>
 </div>
 
 <div class="container-fluid">
                                  
 	<div class="row">
 		<div class="col-md-12">
-			<div class="panel panel-inbox">
-                <div class="panel-header">
 
+            {{ range $key, $row := .Messages }}
+
+                <div class="panel">
+                    <div class="panel-header p10">
+
+                        <h6>From: {{ $row.From }}</h6>
+                        <h6>To:{{ $row.To }}</h6>
+                        <h6>Date: {{ $row.EmailDate }}</h6>
+                    
+                    </div>
+                    <div class="panel-body">    
+
+                        {{ $row.HTML }}
+
+                    </div>
                 </div>
-				<div class="panel-body">
 
+            {{ end }}
 
-
-				</div>
-			</div>
 		</div>
 	</div>
 
-</div> <!-- .container-fluid -->
+</div>
 
 
 {{end}}

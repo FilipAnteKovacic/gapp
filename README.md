@@ -32,17 +32,10 @@ BUILDING CONTINER
     docker pull registry.gitlab.com/tmcsolutions/gapp:v1
 
 
-- combine search&pages
-- disable if not valid page
 
-- search labels
 
-- email details
 
-- attachment
-
-- simplify sync
-
+- attachment - attachment larger than 16mb
 - login
 
 

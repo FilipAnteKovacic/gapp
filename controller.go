@@ -45,12 +45,13 @@ type EsPage struct {
 
 //EPage struct for email pages
 type EPage struct {
-	URL   string
-	Logo  string
-	Name  string
-	View  string
-	User  User
-	Email []Message
+	URL      string
+	Logo     string
+	Name     string
+	View     string
+	User     User
+	Thread   Thread
+	Messages []ThreadMessage
 }
 
 // GPagging stats
@@ -67,14 +68,16 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 
 	user := GetUserByEmail("it@ulixtravel.com")
-	email := GetGMail(user, vars["treadID"])
+	thread := GetThread(vars["treadID"], user.Email)
+	messages := GetThreadMessages(user, vars["treadID"])
 
 	p := EPage{
-		Name:  "Email",
-		View:  "email",
-		URL:   os.Getenv("URL"),
-		User:  user,
-		Email: email,
+		Name:     "Email",
+		View:     "email",
+		URL:      os.Getenv("URL"),
+		User:     user,
+		Thread:   thread,
+		Messages: messages,
 	}
 
 	parsedTemplate, err := template.ParseFiles(
@@ -101,7 +104,7 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 	user := GetUserByEmail("it@ulixtravel.com")
 	stats := GetGMailsStats(user)
-	labels := GetGMailLabels(user)
+	labels := GetLabels(user)
 
 	search := r.FormValue("search")
 
@@ -130,7 +133,7 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		PreviousPage: (pg - 1),
 	}
 
-	gcount, emails := GetGMails(user, label, search, pg)
+	gcount, emails := GetThreads(user, label, search, pg)
 
 	p := EsPage{
 		Name:      "Emails",

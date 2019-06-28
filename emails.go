@@ -1,14 +1,33 @@
 package main
 
 import (
+	"encoding/base64"
+	"fmt"
+	"html/template"
 	"os"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
 )
 
-// GetGMail return emails from db by user
-func GetGMail(user User, treadID string) []Message {
+// ThreadMessage simplify msg struct from gmail
+type ThreadMessage struct {
+	ID        bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Owner     string        `json:"owner" bson:"owner,omitempty"`
+	ThreadID  string        `json:"threadID" bson:"threadID,omitempty"`
+	From      string        `json:"from" bson:"from,omitempty"`
+	To        string        `json:"to" bson:"to,omitempty"`
+	EmailDate string        `json:"emailDate" bson:"emailDate,omitempty"`
+	Subject   string        `json:"subject" bson:"subject,omitempty"`
+	Snippet   string        `json:"snippet" bson:"snippet,omitempty"`
+	Labels    []string      `json:"labels" bson:"labels,omitempty"`
+	Text      string        `json:"text" bson:"text,omitempty"`
+	HTML      template.HTML `json:"html" bson:"html,omitempty"`
+	//Attachments			string		`json:"html" bson:"html,omitempty"`
+}
+
+// GetThreadMessages return emails from db by user
+func GetThreadMessages(user User, treadID string) []ThreadMessage {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -20,6 +39,7 @@ func GetGMail(user User, treadID string) []Message {
 	defer SaveLog(proc)
 
 	var gdata []Message
+	var tmsgs []ThreadMessage
 
 	DB := MongoSession()
 	DBC := DB.DB(os.Getenv("MONGO_DB")).C("messages")
@@ -27,18 +47,127 @@ func GetGMail(user User, treadID string) []Message {
 
 	// group tredids
 
-	err := DBC.Find(bson.M{"owner": user.Email, "threadid": treadID}).Sort("-internalDate").All(&gdata)
+	err := DBC.Find(bson.M{"owner": user.Email, "threadID": treadID}).Sort("-internalDate").All(&gdata)
 	if err != nil {
 		HandleError(proc, "get snippets", err, true)
-		return gdata
+		return tmsgs
 	}
 
-	return gdata
+	for _, msg := range gdata {
+
+		tmsgs = append(tmsgs, SimplifyGMessage(msg))
+
+	}
+
+	return tmsgs
 
 }
 
-// GetGMails return emails from db by user
-func GetGMails(user User, label, search string, page int) (int, []Thread) {
+// SimplifyGMessage simplify message struct for view
+func SimplifyGMessage(msg Message) ThreadMessage {
+
+	var simply ThreadMessage
+
+	simply.ThreadID = msg.ThreadID
+	simply.Snippet = msg.Snippet
+	simply.Labels = msg.Labels
+
+	if len(msg.Payload.Headers) != 0 {
+
+		for _, h := range msg.Payload.Headers {
+
+			switch h.Name {
+			case "Subject":
+
+				simply.Subject = h.Value
+
+				break
+			case "From":
+
+				simply.From = h.Value
+
+				break
+			case "To":
+
+				simply.To = h.Value
+
+				break
+			case "Date":
+
+				simply.EmailDate = h.Value
+
+				break
+			}
+
+		}
+
+	}
+
+	if len(msg.Payload.Parts) != 0 {
+
+		for _, p := range msg.Payload.Parts {
+
+			switch p.MimeType {
+			case "text/plain":
+
+				decoded, err := base64.StdEncoding.DecodeString(p.Body.Data)
+				if err != nil {
+					fmt.Println("decode error text:", err)
+				}
+
+				simply.Text = string(decoded)
+
+				break
+			case "text/html":
+
+				decoded, err := base64.RawURLEncoding.DecodeString(p.Body.Data)
+				if err != nil {
+					fmt.Println("decode error html:", err)
+				}
+
+				simply.HTML = template.HTML(string(decoded))
+
+				break
+			}
+
+		}
+
+	}
+
+	return simply
+
+}
+
+// GetThread return thread by ID
+func GetThread(threadID, owner string) Thread {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetThread",
+	}
+
+	defer SaveLog(proc)
+
+	var thread Thread
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("threads")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"owner": owner, "threadID": threadID}).One(&thread)
+	if err != nil {
+		HandleError(proc, "get thread", err, true)
+		return thread
+	}
+
+	return thread
+
+}
+
+// GetThreads return emails from db by user
+func GetThreads(user User, label, search string, page int) (int, []Thread) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -91,22 +220,6 @@ func GetGMails(user User, label, search string, page int) (int, []Thread) {
 
 }
 
-// GetMessageBody goes trought message struct, find body, combine in string
-func GetMessageBody(m Message) string {
-
-	body := ""
-
-	if m.Payload.Body.Data != "" {
-
-		//sDec, _ := b64.StdEncoding.DecodeString(m.Payload.Body.Data)
-		//body = body + string(sDec)
-
-	}
-
-	return body
-
-}
-
 // GStats email owner quick stats
 type GStats struct {
 	MinDate string
@@ -131,8 +244,6 @@ func GetGMailsStats(user User) GStats {
 	DB := MongoSession()
 	DBC := DB.DB(os.Getenv("MONGO_DB")).C("threads")
 	defer DB.Close()
-
-	// group tredids
 
 	msgCount, err := DBC.Find(bson.M{"owner": user.Email}).Count()
 	if err != nil {
@@ -170,8 +281,8 @@ func GetGMailsStats(user User) GStats {
 
 }
 
-// GetGMailLabels return all labels from db by user
-func GetGMailLabels(user User) []string {
+// GetLabels return all labels from db by user
+func GetLabels(user User) []string {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -188,8 +299,6 @@ func GetGMailLabels(user User) []string {
 	DB := MongoSession()
 	DBC := DB.DB(os.Getenv("MONGO_DB")).C("labels")
 	defer DB.Close()
-
-	// group tredids
 
 	err := DBC.Find(bson.M{"owner": user.Email}).Sort("name").All(&gdata)
 	if err != nil {
