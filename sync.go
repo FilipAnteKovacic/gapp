@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"html/template"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -68,14 +69,17 @@ func BackupGMail(syncer Syncer) {
 	mongoCS := DBC.DB("gmail").C("syncers")
 	mongoCT := DBC.DB("gmail").C("threads")
 	mongoCM := DBC.DB("gmail").C("messages")
+	mongoCMR := DBC.DB("gmail").C("messagesRaw")
 	mongoCA := DBC.DB("gmail").C("attachments")
 	mongoCL := DBC.DB("gmail").C("labels")
 	defer DBC.Close()
 
+	// init save syncer
 	CRUDSyncer(syncer, mongoCS)
 
 	user := GetUserByEmail(syncer.Owner)
 
+	// get client for using Gmail API
 	client := user.Config.Client(context.Background(), user.Token)
 
 	svc, err := gmail.New(client)
@@ -85,6 +89,7 @@ func BackupGMail(syncer Syncer) {
 
 	syncer.ThreadsCount = 0
 
+	//Gmail API page loop
 	pageToken := ""
 	for {
 
@@ -100,6 +105,7 @@ func BackupGMail(syncer Syncer) {
 		log.Printf("Processing %v messages...\n", len(r.Threads))
 		for _, thread := range r.Threads {
 
+			// Init thread
 			t := Thread{
 				Owner:     user.Email,
 				ThreadID:  thread.Id,
@@ -107,6 +113,7 @@ func BackupGMail(syncer Syncer) {
 				Snippet:   thread.Snippet,
 			}
 
+			// Get thread details
 			threadSer := svc.Users.Threads.Get(user.Email, thread.Id)
 
 			thread, err := threadSer.Do()
@@ -117,14 +124,13 @@ func BackupGMail(syncer Syncer) {
 			syncer.ThreadsCount++
 
 			t.MsgCount = len(thread.Messages)
+			t.AttchCount = 0
 
 			if t.MsgCount != 0 {
 
-				var wgData sync.WaitGroup
-
 				for _, msg := range thread.Messages {
 
-					msgo := Message{
+					msgo := RawMessage{
 						Owner:           user.Email,
 						MsgID:           msg.Id,
 						ThreadID:        msg.ThreadId,
@@ -136,86 +142,149 @@ func BackupGMail(syncer Syncer) {
 						InternalDate:    time.Unix(msg.InternalDate/1000, 0),
 					}
 
-					if t.HistoryID == msgo.HistoryID {
-						t.InternalDate = msgo.InternalDate
-						t.InternalDateRaw = msgo.InternalDateRaw
-						t.Labels = msgo.Labels
+					mtread := ThreadMessage{
+						Owner:        user.Email,
+						MsgID:        msg.Id,
+						ThreadID:     msg.ThreadId,
+						HistoryID:    msg.HistoryId,
+						Headers:      ParseMessageHeaders(msg.Payload.Headers),
+						Labels:       msg.LabelIds,
+						Snippet:      msg.Snippet,
+						InternalDate: time.Unix(msg.InternalDate/1000, 0),
+					}
 
-						if len(msg.Payload.Headers) != 0 {
+					if len(msg.Payload.Headers) != 0 {
 
-							for _, h := range msg.Payload.Headers {
+						for _, h := range msg.Payload.Headers {
 
-								switch h.Name {
-								case "Subject":
+							switch h.Name {
+							case "Subject":
 
-									t.Subject = h.Value
+								mtread.Subject = h.Value
 
-									break
-								case "From":
+								break
+							case "From":
 
-									t.From = h.Value
-
-									emails := emailaddress.Find([]byte(h.Value), false)
-									var emls []string
-									for _, e := range emails {
-										emls = append(emls, e.String())
-									}
-									t.FromEmail = strings.Join(emls, ",")
-
-									break
-								case "To":
-
-									t.To = h.Value
-
-									emails := emailaddress.Find([]byte(h.Value), false)
-									for _, e := range emails {
-										t.ToEmail = append(t.ToEmail, e.String())
-									}
-
-									break
-								case "Date":
-
-									t.EmailDate = h.Value
-
-									break
+								mtread.From = h.Value
+								emails := emailaddress.Find([]byte(h.Value), false)
+								for _, e := range emails {
+									mtread.FromEmails = append(mtread.FromEmails, strings.ToLower(e.String()))
 								}
 
+								break
+							case "To":
+
+								mtread.To = h.Value
+								emails := emailaddress.Find([]byte(h.Value), false)
+								for _, e := range emails {
+									mtread.ToEmails = append(mtread.ToEmails, strings.ToLower(e.String()))
+								}
+
+								break
+							case "Date":
+
+								mtread.EmailDate = h.Value
+
+								break
 							}
 
 						}
 
 					}
-
-					wgData.Add(1)
-					go CRUDMessages(msgo, mongoCM, &wgData)
-
-					SaveLabels(msg.LabelIds, user, mongoCL)
 
 					if len(msg.Payload.Parts) != 0 {
 
-						for _, part := range msg.Payload.Parts {
+						for _, p := range msg.Payload.Parts {
 
-							if part.Body.AttachmentId != "" {
+							switch p.MimeType {
+							case "text/plain":
 
-								attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msg.Id, part.Body.AttachmentId)
+								mtread.TextRaw = p.Body.Data
 
-								attachment, err := attachmentSer.Do()
+								decoded, err := base64.StdEncoding.DecodeString(p.Body.Data)
 								if err != nil {
-									log.Fatalf("Unable to retrieve attachment: %v", err)
+									mtread.Text = err.Error()
+								} else {
+									mtread.Text = string(decoded)
 								}
 
-								attachment.AttachmentId = part.Body.AttachmentId
+								break
+							case "text/html":
 
-								CRUDAttachment(attachment, mongoCA)
+								mtread.HTMLRaw = p.Body.Data
+
+								decoded, err := base64.RawURLEncoding.DecodeString(p.Body.Data)
+								if err != nil {
+									mtread.HTML = template.HTML(err.Error())
+								} else {
+									mtread.HTML = template.HTML(string(decoded))
+								}
+
+								break
+
+							default:
+
+								if p.Body.AttachmentId != "" {
+
+									attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msg.Id, p.Body.AttachmentId)
+
+									attachment, err := attachmentSer.Do()
+									if err != nil {
+										log.Fatalf("Unable to retrieve attachment: %v", err)
+									}
+
+									ah := ParseMessageHeaders(p.Headers)
+
+									a := Attachment{
+										Owner:    user.Email,
+										MsgID:    mtread.MsgID,
+										ThreadID: mtread.ThreadID,
+										AttachID: p.Body.AttachmentId,
+										Filename: p.Filename,
+										Size:     attachment.Size,
+										MimeType: p.MimeType,
+										Headers:  ah,
+										Data:     attachment.Data,
+									}
+
+									if val, ok := ah["ContentType"]; ok {
+										a.ContentType = val
+									}
+
+									mtread.Attachments = append(mtread.Attachments, a.AttachID)
+
+									CRUDAttachment(a, mongoCA)
+
+									t.AttchCount++
+
+								}
+
+								break
 							}
 
 						}
 
 					}
 
-				}
+					if t.HistoryID == mtread.HistoryID {
 
-				wgData.Wait()
+						t.InternalDate = mtread.InternalDate
+						t.Labels = mtread.Labels
+						t.Subject = mtread.Subject
+						t.From = mtread.From
+						t.FromEmails = mtread.FromEmails
+						t.To = mtread.To
+						t.ToEmails = mtread.ToEmails
+						t.EmailDate = mtread.EmailDate
+
+					}
+
+					SaveLabels(msg.LabelIds, user, mongoCL)
+
+					CRUDRawMessage(msgo, mongoCMR)
+					CRUDThreadMessage(mtread, mongoCM)
+
+				}
 
 				CRUDThread(t, mongoCT)
 			}
@@ -233,23 +302,41 @@ func BackupGMail(syncer Syncer) {
 	CRUDSyncer(syncer, mongoCS)
 }
 
+// ParseMessageHeaders return header map
+func ParseMessageHeaders(headers []*gmail.MessagePartHeader) map[string]string {
+
+	h := make(map[string]string)
+
+	if len(headers) != 0 {
+
+		for _, hv := range headers {
+
+			h[hv.Name] = hv.Value
+
+		}
+
+	}
+
+	return h
+}
+
 // Thread struct for threads from email
 type Thread struct {
-	ID              bson.ObjectId `json:"id" bson:"_id,omitempty"`
-	Owner           string        `json:"owner" bson:"owner,omitempty"`
-	ThreadID        string        `json:"threadID" bson:"threadID,omitempty"`
-	HistoryID       uint64        `json:"historyID" bson:"historyID,omitempty"`
-	From            string        `json:"from" bson:"from,omitempty"`
-	FromEmail       string        `json:"fromEmail" bson:"fromEmail,omitempty"`
-	To              string        `json:"to" bson:"to,omitempty"`
-	ToEmail         []string      `json:"toEmail" bson:"toEmail,omitempty"`
-	EmailDate       string        `json:"emailDate" bson:"emailDate,omitempty"`
-	Subject         string        `json:"subject" bson:"subject,omitempty"`
-	Snippet         string        `json:"snippet" bson:"snippet,omitempty"`
-	MsgCount        int           `json:"msgCount" bson:"msgCount,omitempty"`
-	Labels          []string      `json:"labels" bson:"labels,omitempty"`
-	InternalDateRaw int64         `json:"internalDateRaw" bson:"internalDateRaw,omitempty"`
-	InternalDate    time.Time     `json:"internalDate" bson:"internalDate,omitempty"`
+	ID           bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Owner        string        `json:"owner" bson:"owner,omitempty"`
+	ThreadID     string        `json:"threadID" bson:"threadID,omitempty"`
+	HistoryID    uint64        `json:"historyID" bson:"historyID,omitempty"`
+	From         string        `json:"from" bson:"from,omitempty"`
+	FromEmails   []string      `json:"fromEmails" bson:"fromEmails,omitempty"`
+	To           string        `json:"to" bson:"to,omitempty"`
+	ToEmails     []string      `json:"toEmails" bson:"toEmails,omitempty"`
+	EmailDate    string        `json:"emailDate" bson:"emailDate,omitempty"`
+	Subject      string        `json:"subject" bson:"subject,omitempty"`
+	Snippet      string        `json:"snippet" bson:"snippet,omitempty"`
+	MsgCount     int           `json:"msgCount" bson:"msgCount,omitempty"`
+	AttchCount   int           `json:"attchCount" bson:"attchCount,omitempty"`
+	Labels       []string      `json:"labels" bson:"labels,omitempty"`
+	InternalDate time.Time     `json:"internalDate" bson:"internalDate,omitempty"`
 }
 
 // CRUDThread save attachment
@@ -289,8 +376,70 @@ func CRUDThread(thread Thread, mongoC *mgo.Collection) {
 
 }
 
-//Message structure for messages
-type Message struct {
+// ThreadMessage simplify msg struct from gmail
+type ThreadMessage struct {
+	ID           bson.ObjectId     `json:"id" bson:"_id,omitempty"`
+	Owner        string            `json:"owner" bson:"owner,omitempty"`
+	MsgID        string            `json:"msgID" bson:"msgID,omitempty"`
+	HistoryID    uint64            `json:"historyID" bson:"historyID,omitempty"`
+	ThreadID     string            `json:"threadID" bson:"threadID,omitempty"`
+	Headers      map[string]string `json:"headers" bson:"headers,omitempty"`
+	From         string            `json:"from" bson:"from,omitempty"`
+	FromEmails   []string          `json:"fromEmails" bson:"fromEmails,omitempty"`
+	To           string            `json:"to" bson:"to,omitempty"`
+	ToEmails     []string          `json:"toEmails" bson:"toEmails,omitempty"`
+	EmailDate    string            `json:"emailDate" bson:"emailDate,omitempty"`
+	Subject      string            `json:"subject" bson:"subject,omitempty"`
+	Snippet      string            `json:"snippet" bson:"snippet,omitempty"`
+	Labels       []string          `json:"labels" bson:"labels,omitempty"`
+	Text         string            `json:"text" bson:"text,omitempty"`
+	TextRaw      string            `json:"textRaw" bson:"textRaw,omitempty"`
+	HTML         template.HTML     `json:"html" bson:"html,omitempty"`
+	HTMLRaw      string            `json:"htmlRaw" bson:"htmlRaw,omitempty"`
+	Attachments  []string          `json:"attachments" bson:"attachments,omitempty"`
+	InternalDate time.Time         `json:"internalDate" bson:"internalDate,omitempty"`
+}
+
+// CRUDThreadMessage save messages for view
+func CRUDThreadMessage(msg ThreadMessage, mongoC *mgo.Collection) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "CRUDMessages",
+	}
+
+	queryCheck := bson.M{"owner": msg.Owner, "msgID": msg.MsgID, "threadID": msg.ThreadID}
+
+	actRes := ThreadMessage{}
+	err := mongoC.Find(queryCheck).One(&actRes)
+
+	if err != nil {
+
+		err = mongoC.Insert(msg)
+		if err != nil {
+			HandleError(proc, "error while inserting row", err, true)
+			return
+		}
+
+		return
+
+	}
+
+	change := bson.M{"$set": msg}
+	err = mongoC.Update(queryCheck, change)
+	if err != nil {
+		HandleError(proc, "error while updateing row", err, true)
+
+		return
+	}
+	return
+
+}
+
+//RawMessage structure for raw messages
+type RawMessage struct {
 	ID              bson.ObjectId      `json:"id" bson:"_id,omitempty"`
 	Owner           string             `json:"owner" bson:"owner,omitempty"`
 	MsgID           string             `json:"msgID" bson:"msgID,omitempty"`
@@ -303,8 +452,8 @@ type Message struct {
 	InternalDate    time.Time          `json:"internalDate" bson:"internalDate,omitempty"`
 }
 
-// CRUDMessages save messages
-func CRUDMessages(msg Message, mongoC *mgo.Collection, wgi *sync.WaitGroup) {
+// CRUDRawMessage save raw messages
+func CRUDRawMessage(msg RawMessage, mongoC *mgo.Collection) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -315,7 +464,7 @@ func CRUDMessages(msg Message, mongoC *mgo.Collection, wgi *sync.WaitGroup) {
 
 	queryCheck := bson.M{"owner": msg.Owner, "msgID": msg.MsgID, "threadID": msg.ThreadID}
 
-	actRes := Message{}
+	actRes := RawMessage{}
 	err := mongoC.Find(queryCheck).One(&actRes)
 
 	if err != nil {
@@ -323,11 +472,9 @@ func CRUDMessages(msg Message, mongoC *mgo.Collection, wgi *sync.WaitGroup) {
 		err = mongoC.Insert(msg)
 		if err != nil {
 			HandleError(proc, "error while inserting row", err, true)
-			wgi.Done()
 			return
 		}
 
-		wgi.Done()
 		return
 
 	}
@@ -336,16 +483,30 @@ func CRUDMessages(msg Message, mongoC *mgo.Collection, wgi *sync.WaitGroup) {
 	err = mongoC.Update(queryCheck, change)
 	if err != nil {
 		HandleError(proc, "error while updateing row", err, true)
-		wgi.Done()
+
 		return
 	}
-	wgi.Done()
 	return
 
 }
 
+// Attachment struct for attachments
+type Attachment struct {
+	ID          bson.ObjectId     `json:"id" bson:"_id,omitempty"`
+	Owner       string            `json:"owner" bson:"owner,omitempty"`
+	AttachID    string            `json:"attachID" bson:"attachID,omitempty"`
+	MsgID       string            `json:"msgID" bson:"msgID,omitempty"`
+	ThreadID    string            `json:"threadID" bson:"threadID,omitempty"`
+	Filename    string            `json:"filename" bson:"filename,omitempty"`
+	Size        int64             `json:"size" bson:"size,omitempty"`
+	MimeType    string            `json:"mimeType" bson:"mimeType,omitempty"`
+	ContentType string            `json:"contentType" bson:"contentType,omitempty"`
+	Headers     map[string]string `json:"headers" bson:"headers,omitempty"`
+	Data        string            `json:"data" bson:"data,omitempty"`
+}
+
 // CRUDAttachment save attachment
-func CRUDAttachment(att *gmail.MessagePartBody, mongoC *mgo.Collection) {
+func CRUDAttachment(attch Attachment, mongoC *mgo.Collection) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -354,14 +515,14 @@ func CRUDAttachment(att *gmail.MessagePartBody, mongoC *mgo.Collection) {
 		Name:    "CRUDAttachment",
 	}
 
-	queryCheck := bson.M{"attachmentid": att.AttachmentId}
+	queryCheck := bson.M{"owner": attch.Owner, "attachID": attch.AttachID}
 
-	actRes := gmail.MessagePartBody{}
+	actRes := Attachment{}
 	err := mongoC.Find(queryCheck).One(&actRes)
 
 	if err != nil {
 
-		err = mongoC.Insert(att)
+		err = mongoC.Insert(attch)
 		if err != nil {
 			HandleError(proc, "error while inserting row", err, true)
 			return
@@ -371,7 +532,7 @@ func CRUDAttachment(att *gmail.MessagePartBody, mongoC *mgo.Collection) {
 
 	}
 
-	change := bson.M{"$set": att}
+	change := bson.M{"$set": attch}
 	err = mongoC.Update(queryCheck, change)
 	if err != nil {
 		HandleError(proc, "error while updateing row", err, true)

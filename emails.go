@@ -1,29 +1,40 @@
 package main
 
 import (
-	"encoding/base64"
-	"fmt"
-	"html/template"
 	"os"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
 )
 
-// ThreadMessage simplify msg struct from gmail
-type ThreadMessage struct {
-	ID        bson.ObjectId `json:"id" bson:"_id,omitempty"`
-	Owner     string        `json:"owner" bson:"owner,omitempty"`
-	ThreadID  string        `json:"threadID" bson:"threadID,omitempty"`
-	From      string        `json:"from" bson:"from,omitempty"`
-	To        string        `json:"to" bson:"to,omitempty"`
-	EmailDate string        `json:"emailDate" bson:"emailDate,omitempty"`
-	Subject   string        `json:"subject" bson:"subject,omitempty"`
-	Snippet   string        `json:"snippet" bson:"snippet,omitempty"`
-	Labels    []string      `json:"labels" bson:"labels,omitempty"`
-	Text      string        `json:"text" bson:"text,omitempty"`
-	HTML      template.HTML `json:"html" bson:"html,omitempty"`
-	//Attachments			string		`json:"html" bson:"html,omitempty"`
+// GetAttachment return attachment
+func GetAttachment(attachID string) Attachment {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetAttachment",
+	}
+
+	defer SaveLog(proc)
+
+	var attach Attachment
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("attachments")
+	defer DB.Close()
+
+	// group tredids
+
+	err := DBC.Find(bson.M{"attachID": attachID}).One(&attach)
+	if err != nil {
+		HandleError(proc, "get attachment", err, true)
+		return attach
+	}
+
+	return attach
+
 }
 
 // GetThreadMessages return emails from db by user
@@ -38,7 +49,6 @@ func GetThreadMessages(user User, treadID string) []ThreadMessage {
 
 	defer SaveLog(proc)
 
-	var gdata []Message
 	var tmsgs []ThreadMessage
 
 	DB := MongoSession()
@@ -47,94 +57,13 @@ func GetThreadMessages(user User, treadID string) []ThreadMessage {
 
 	// group tredids
 
-	err := DBC.Find(bson.M{"owner": user.Email, "threadID": treadID}).Sort("-internalDate").All(&gdata)
+	err := DBC.Find(bson.M{"owner": user.Email, "threadID": treadID}).Sort("-internalDate").All(&tmsgs)
 	if err != nil {
 		HandleError(proc, "get snippets", err, true)
 		return tmsgs
 	}
 
-	for _, msg := range gdata {
-
-		tmsgs = append(tmsgs, SimplifyGMessage(msg))
-
-	}
-
 	return tmsgs
-
-}
-
-// SimplifyGMessage simplify message struct for view
-func SimplifyGMessage(msg Message) ThreadMessage {
-
-	var simply ThreadMessage
-
-	simply.ThreadID = msg.ThreadID
-	simply.Snippet = msg.Snippet
-	simply.Labels = msg.Labels
-
-	if len(msg.Payload.Headers) != 0 {
-
-		for _, h := range msg.Payload.Headers {
-
-			switch h.Name {
-			case "Subject":
-
-				simply.Subject = h.Value
-
-				break
-			case "From":
-
-				simply.From = h.Value
-
-				break
-			case "To":
-
-				simply.To = h.Value
-
-				break
-			case "Date":
-
-				simply.EmailDate = h.Value
-
-				break
-			}
-
-		}
-
-	}
-
-	if len(msg.Payload.Parts) != 0 {
-
-		for _, p := range msg.Payload.Parts {
-
-			switch p.MimeType {
-			case "text/plain":
-
-				decoded, err := base64.StdEncoding.DecodeString(p.Body.Data)
-				if err != nil {
-					fmt.Println("decode error text:", err)
-				}
-
-				simply.Text = string(decoded)
-
-				break
-			case "text/html":
-
-				decoded, err := base64.RawURLEncoding.DecodeString(p.Body.Data)
-				if err != nil {
-					fmt.Println("decode error html:", err)
-				}
-
-				simply.HTML = template.HTML(string(decoded))
-
-				break
-			}
-
-		}
-
-	}
-
-	return simply
 
 }
 
