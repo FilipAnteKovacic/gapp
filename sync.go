@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -22,7 +23,7 @@ type Syncer struct {
 	Start        time.Time     `json:"start" bson:"start,omitempty"`
 	End          time.Time     `json:"end" bson:"end,omitempty"`
 	ThreadsCount int           `json:"count" bson:"count,omitempty"`
-	LastID       int           `json:"lastID" bson:"lastID,omitempty"`
+	LastID       string        `json:"lastID" bson:"lastID,omitempty"`
 }
 
 // CRUDSyncer save syncer
@@ -65,13 +66,17 @@ func CRUDSyncer(sync Syncer, mongoC *mgo.Collection) {
 // BackupGMail use syncer struct to start sync from GMail api
 func BackupGMail(syncer Syncer) {
 
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "BackupGMail",
+	}
+
+	defer SaveLog(proc)
+
 	DBC := MongoSession()
 	mongoCS := DBC.DB("gmail").C("syncers")
-	mongoCT := DBC.DB("gmail").C("threads")
-	mongoCM := DBC.DB("gmail").C("messages")
-	mongoCMR := DBC.DB("gmail").C("messagesRaw")
-	mongoCA := DBC.DB("gmail").C("attachments")
-	mongoCL := DBC.DB("gmail").C("labels")
 	defer DBC.Close()
 
 	// init save syncer
@@ -84,7 +89,8 @@ func BackupGMail(syncer Syncer) {
 
 	svc, err := gmail.New(client)
 	if err != nil {
-		log.Fatalf("Unable to create Gmail service: %v", err)
+		HandleError(proc, "Unable to create Gmail service", err, true)
+		return
 	}
 
 	syncer.ThreadsCount = 0
@@ -99,197 +105,24 @@ func BackupGMail(syncer Syncer) {
 		}
 		r, err := req.Do()
 		if err != nil {
-			log.Fatalf("Unable to retrieve messages: %v", err)
+			HandleError(proc, "Unable to retrieve threads", err, true)
+			return
 		}
 
-		log.Printf("Processing %v messages...\n", len(r.Threads))
+		var wgCostDrv sync.WaitGroup
+
+		log.Printf("Processing %v threads...\n", len(r.Threads))
 		for _, thread := range r.Threads {
 
-			// Init thread
-			t := Thread{
-				Owner:     user.Email,
-				ThreadID:  thread.Id,
-				HistoryID: thread.HistoryId,
-				Snippet:   thread.Snippet,
-			}
-
-			// Get thread details
-			threadSer := svc.Users.Threads.Get(user.Email, thread.Id)
-
-			thread, err := threadSer.Do()
-			if err != nil {
-				log.Fatalf("Unable to retrieve treads: %v", err)
-			}
-
 			syncer.ThreadsCount++
+			syncer.LastID = string(thread.Id)
 
-			t.MsgCount = len(thread.Messages)
-			t.AttchCount = 0
-
-			if t.MsgCount != 0 {
-
-				for _, msg := range thread.Messages {
-
-					msgo := RawMessage{
-						Owner:           user.Email,
-						MsgID:           msg.Id,
-						ThreadID:        msg.ThreadId,
-						HistoryID:       msg.HistoryId,
-						Labels:          msg.LabelIds,
-						Snippet:         msg.Snippet,
-						Payload:         msg.Payload,
-						InternalDateRaw: msg.InternalDate,
-						InternalDate:    time.Unix(msg.InternalDate/1000, 0),
-					}
-
-					mtread := ThreadMessage{
-						Owner:        user.Email,
-						MsgID:        msg.Id,
-						ThreadID:     msg.ThreadId,
-						HistoryID:    msg.HistoryId,
-						Headers:      ParseMessageHeaders(msg.Payload.Headers),
-						Labels:       msg.LabelIds,
-						Snippet:      msg.Snippet,
-						InternalDate: time.Unix(msg.InternalDate/1000, 0),
-					}
-
-					if len(msg.Payload.Headers) != 0 {
-
-						for _, h := range msg.Payload.Headers {
-
-							switch h.Name {
-							case "Subject":
-
-								mtread.Subject = h.Value
-
-								break
-							case "From":
-
-								mtread.From = h.Value
-								emails := emailaddress.Find([]byte(h.Value), false)
-								for _, e := range emails {
-									mtread.FromEmails = append(mtread.FromEmails, strings.ToLower(e.String()))
-								}
-
-								break
-							case "To":
-
-								mtread.To = h.Value
-								emails := emailaddress.Find([]byte(h.Value), false)
-								for _, e := range emails {
-									mtread.ToEmails = append(mtread.ToEmails, strings.ToLower(e.String()))
-								}
-
-								break
-							case "Date":
-
-								mtread.EmailDate = h.Value
-
-								break
-							}
-
-						}
-
-					}
-
-					if len(msg.Payload.Parts) != 0 {
-
-						for _, p := range msg.Payload.Parts {
-
-							switch p.MimeType {
-							case "text/plain":
-
-								mtread.TextRaw = p.Body.Data
-
-								decoded, err := base64.StdEncoding.DecodeString(p.Body.Data)
-								if err != nil {
-									mtread.Text = err.Error()
-								} else {
-									mtread.Text = string(decoded)
-								}
-
-								break
-							case "text/html":
-
-								mtread.HTMLRaw = p.Body.Data
-
-								decoded, err := base64.RawURLEncoding.DecodeString(p.Body.Data)
-								if err != nil {
-									mtread.HTML = template.HTML(err.Error())
-								} else {
-									mtread.HTML = template.HTML(string(decoded))
-								}
-
-								break
-
-							default:
-
-								if p.Body.AttachmentId != "" {
-
-									attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msg.Id, p.Body.AttachmentId)
-
-									attachment, err := attachmentSer.Do()
-									if err != nil {
-										log.Fatalf("Unable to retrieve attachment: %v", err)
-									}
-
-									ah := ParseMessageHeaders(p.Headers)
-
-									a := Attachment{
-										Owner:    user.Email,
-										MsgID:    mtread.MsgID,
-										ThreadID: mtread.ThreadID,
-										AttachID: p.Body.AttachmentId,
-										Filename: p.Filename,
-										Size:     attachment.Size,
-										MimeType: p.MimeType,
-										Headers:  ah,
-										Data:     attachment.Data,
-									}
-
-									if val, ok := ah["ContentType"]; ok {
-										a.ContentType = val
-									}
-
-									mtread.Attachments = append(mtread.Attachments, a.AttachID)
-
-									CRUDAttachment(a, mongoCA)
-
-									t.AttchCount++
-
-								}
-
-								break
-							}
-
-						}
-
-					}
-
-					if t.HistoryID == mtread.HistoryID {
-
-						t.InternalDate = mtread.InternalDate
-						t.Labels = mtread.Labels
-						t.Subject = mtread.Subject
-						t.From = mtread.From
-						t.FromEmails = mtread.FromEmails
-						t.To = mtread.To
-						t.ToEmails = mtread.ToEmails
-						t.EmailDate = mtread.EmailDate
-
-					}
-
-					SaveLabels(msg.LabelIds, user, mongoCL)
-
-					CRUDRawMessage(msgo, mongoCMR)
-					CRUDThreadMessage(mtread, mongoCM)
-
-				}
-
-				CRUDThread(t, mongoCT)
-			}
+			wgCostDrv.Add(1)
+			go ProccessGmailThread(user, thread, svc, DBC, &wgCostDrv)
 
 		}
+
+		wgCostDrv.Wait()
 
 		if r.NextPageToken == "" {
 			break
@@ -300,6 +133,213 @@ func BackupGMail(syncer Syncer) {
 	syncer.End = time.Now()
 
 	CRUDSyncer(syncer, mongoCS)
+}
+
+// ProccessGmailThread process single thread
+func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DBC *mgo.Session, wgi *sync.WaitGroup) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "ProccessGmailThread",
+	}
+
+	defer SaveLog(proc)
+
+	mongoCT := DBC.DB("gmail").C("threads")
+	mongoCM := DBC.DB("gmail").C("messages")
+	mongoCMR := DBC.DB("gmail").C("messagesRaw")
+	mongoCA := DBC.DB("gmail").C("attachments")
+	mongoCL := DBC.DB("gmail").C("labels")
+
+	// Init thread
+	t := Thread{
+		Owner:     user.Email,
+		ThreadID:  thread.Id,
+		HistoryID: thread.HistoryId,
+		Snippet:   thread.Snippet,
+	}
+
+	// Get thread details
+	threadSer := svc.Users.Threads.Get(user.Email, thread.Id)
+
+	thread, err := threadSer.Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve tread: %v", err)
+		wgi.Done()
+		return
+	}
+
+	t.MsgCount = len(thread.Messages)
+	t.AttchCount = 0
+
+	if t.MsgCount != 0 {
+
+		for _, msg := range thread.Messages {
+
+			msgo := RawMessage{
+				Owner:           user.Email,
+				MsgID:           msg.Id,
+				ThreadID:        msg.ThreadId,
+				HistoryID:       msg.HistoryId,
+				Labels:          msg.LabelIds,
+				Snippet:         msg.Snippet,
+				Payload:         msg.Payload,
+				InternalDateRaw: msg.InternalDate,
+				InternalDate:    time.Unix(msg.InternalDate/1000, 0),
+			}
+
+			mtread := ThreadMessage{
+				Owner:        user.Email,
+				MsgID:        msg.Id,
+				ThreadID:     msg.ThreadId,
+				HistoryID:    msg.HistoryId,
+				Headers:      ParseMessageHeaders(msg.Payload.Headers),
+				Labels:       msg.LabelIds,
+				Snippet:      msg.Snippet,
+				InternalDate: time.Unix(msg.InternalDate/1000, 0),
+			}
+
+			if len(msg.Payload.Headers) != 0 {
+
+				for _, h := range msg.Payload.Headers {
+
+					switch h.Name {
+					case "Subject":
+
+						mtread.Subject = h.Value
+
+						break
+					case "From":
+
+						mtread.From = h.Value
+						emails := emailaddress.Find([]byte(h.Value), false)
+						for _, e := range emails {
+							mtread.FromEmails = append(mtread.FromEmails, strings.ToLower(e.String()))
+						}
+
+						break
+					case "To":
+
+						mtread.To = h.Value
+						emails := emailaddress.Find([]byte(h.Value), false)
+						for _, e := range emails {
+							mtread.ToEmails = append(mtread.ToEmails, strings.ToLower(e.String()))
+						}
+
+						break
+					case "Date":
+
+						mtread.EmailDate = h.Value
+
+						break
+					}
+
+				}
+
+			}
+
+			if len(msg.Payload.Parts) != 0 {
+
+				for _, p := range msg.Payload.Parts {
+
+					switch p.MimeType {
+					case "text/plain":
+
+						mtread.TextRaw = p.Body.Data
+
+						decoded, err := base64.StdEncoding.DecodeString(p.Body.Data)
+						if err != nil {
+							mtread.Text = err.Error()
+						} else {
+							mtread.Text = string(decoded)
+						}
+
+						break
+					case "text/html":
+
+						mtread.HTMLRaw = p.Body.Data
+
+						decoded, err := base64.RawURLEncoding.DecodeString(p.Body.Data)
+						if err != nil {
+							mtread.HTML = template.HTML(err.Error())
+						} else {
+							mtread.HTML = template.HTML(string(decoded))
+						}
+
+						break
+
+					default:
+
+						if p.Body.AttachmentId != "" {
+
+							attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msg.Id, p.Body.AttachmentId)
+
+							attachment, err := attachmentSer.Do()
+							if err != nil {
+								HandleError(proc, "Unable to retrieve attachment", err, true)
+							}
+
+							ah := ParseMessageHeaders(p.Headers)
+
+							a := Attachment{
+								Owner:    user.Email,
+								MsgID:    mtread.MsgID,
+								ThreadID: mtread.ThreadID,
+								AttachID: p.Body.AttachmentId,
+								Filename: p.Filename,
+								Size:     attachment.Size,
+								MimeType: p.MimeType,
+								Headers:  ah,
+								Data:     attachment.Data,
+							}
+
+							if val, ok := ah["ContentType"]; ok {
+								a.ContentType = val
+							}
+
+							mtread.Attachments = append(mtread.Attachments, a.AttachID)
+
+							CRUDAttachment(a, mongoCA)
+
+							t.AttchCount++
+
+						}
+
+						break
+					}
+
+				}
+
+			}
+
+			if t.HistoryID == mtread.HistoryID {
+
+				t.InternalDate = mtread.InternalDate
+				t.Labels = mtread.Labels
+				t.Subject = mtread.Subject
+				t.From = mtread.From
+				t.FromEmails = mtread.FromEmails
+				t.To = mtread.To
+				t.ToEmails = mtread.ToEmails
+				t.EmailDate = mtread.EmailDate
+
+			}
+
+			SaveLabels(msg.LabelIds, user, mongoCL)
+
+			CRUDRawMessage(msgo, mongoCMR)
+			CRUDThreadMessage(mtread, mongoCM)
+
+		}
+
+		CRUDThread(t, mongoCT)
+	}
+
+	wgi.Done()
+	return
+
 }
 
 // ParseMessageHeaders return header map
