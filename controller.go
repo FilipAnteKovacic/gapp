@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -178,7 +179,13 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 		query := r.FormValue("query")
 
-		go BackupGMail(u, query)
+		s := Syncer{
+			Owner: u.Email,
+			Query: query,
+			Start: time.Now(),
+		}
+
+		go BackupGMail(s)
 
 		http.Redirect(w, r, os.Getenv("URL")+"/emails", 301)
 	}

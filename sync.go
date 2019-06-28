@@ -13,15 +13,68 @@ import (
 	gmail "google.golang.org/api/gmail/v1"
 )
 
-// BackupGMail is an example that demonstrates calling the Gmail API.
-// It iterates over all messages of a user that are larger
-// than 5MB, sorts them by size, and then interactively asks the user to
-// choose either to Delete, Skip, or Quit for each message.
-//
-// Example usage:
-//   go build -o go-api-demo *.go
-//   go-api-demo -clientid="my-clientid" -secret="my-secret" gmail
-func BackupGMail(user User, query string) {
+// Syncer struct for sync queries
+type Syncer struct {
+	ID           bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Owner        string        `json:"owner" bson:"owner,omitempty"`
+	Query        string        `json:"query" bson:"query,omitempty"`
+	Start        time.Time     `json:"start" bson:"start,omitempty"`
+	End          time.Time     `json:"end" bson:"end,omitempty"`
+	ThreadsCount int           `json:"count" bson:"count,omitempty"`
+	LastID       int           `json:"lastID" bson:"lastID,omitempty"`
+}
+
+// CRUDSyncer save syncer
+func CRUDSyncer(sync Syncer, mongoC *mgo.Collection) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "CRUDSyncer",
+	}
+
+	queryCheck := bson.M{"owner": sync.Owner, "query": sync.Query}
+
+	actRes := Syncer{}
+	err := mongoC.Find(queryCheck).One(&actRes)
+
+	if err != nil {
+
+		err = mongoC.Insert(sync)
+		if err != nil {
+			HandleError(proc, "error while inserting row", err, true)
+			return
+		}
+
+		return
+
+	}
+
+	change := bson.M{"$set": sync}
+	err = mongoC.Update(queryCheck, change)
+	if err != nil {
+		HandleError(proc, "error while updateing row", err, true)
+		return
+	}
+	return
+
+}
+
+// BackupGMail use syncer struct to start sync from GMail api
+func BackupGMail(syncer Syncer) {
+
+	DBC := MongoSession()
+	mongoCS := DBC.DB("gmail").C("syncers")
+	mongoCT := DBC.DB("gmail").C("threads")
+	mongoCM := DBC.DB("gmail").C("messages")
+	mongoCA := DBC.DB("gmail").C("attachments")
+	mongoCL := DBC.DB("gmail").C("labels")
+	defer DBC.Close()
+
+	CRUDSyncer(syncer, mongoCS)
+
+	user := GetUserByEmail(syncer.Owner)
 
 	client := user.Config.Client(context.Background(), user.Token)
 
@@ -30,16 +83,12 @@ func BackupGMail(user User, query string) {
 		log.Fatalf("Unable to create Gmail service: %v", err)
 	}
 
-	DBC := MongoSession()
-	mongoCT := DBC.DB("gmail").C("threads")
-	mongoCM := DBC.DB("gmail").C("messages")
-	mongoCA := DBC.DB("gmail").C("attachments")
-	mongoCL := DBC.DB("gmail").C("labels")
-	defer DBC.Close()
-
 	pageToken := ""
 	for {
-		req := svc.Users.Threads.List(user.Email).Q(query)
+
+		syncer.ThreadsCount = 0
+
+		req := svc.Users.Threads.List(user.Email).Q(syncer.Query)
 		if pageToken != "" {
 			req.PageToken(pageToken)
 		}
@@ -64,6 +113,8 @@ func BackupGMail(user User, query string) {
 			if err != nil {
 				log.Fatalf("Unable to retrieve treads: %v", err)
 			}
+
+			syncer.ThreadsCount++
 
 			t.MsgCount = len(thread.Messages)
 
@@ -176,6 +227,10 @@ func BackupGMail(user User, query string) {
 		}
 		pageToken = r.NextPageToken
 	}
+
+	syncer.End = time.Now()
+
+	CRUDSyncer(syncer, mongoCS)
 }
 
 type Thread struct {
