@@ -244,12 +244,14 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 				for _, p := range msg.Payload.Parts {
 
+					//base64.StdEncoding.DecodeString(p.Body.Data)
+					//base64.RawURLEncoding.DecodeString(p.Body.Data)
 					switch p.MimeType {
 					case "text/plain":
 
 						mtread.TextRaw = p.Body.Data
 
-						decoded, err := base64.StdEncoding.DecodeString(p.Body.Data)
+						decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
 						if err != nil {
 							mtread.Text = err.Error()
 						} else {
@@ -261,7 +263,7 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 						mtread.HTMLRaw = p.Body.Data
 
-						decoded, err := base64.RawURLEncoding.DecodeString(p.Body.Data)
+						decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
 						if err != nil {
 							mtread.HTML = template.HTML(err.Error())
 						} else {
@@ -295,7 +297,7 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 								Data:     attachment.Data,
 							}
 
-							if val, ok := ah["ContentType"]; ok {
+							if val, ok := ah["Content-Type"]; ok {
 								a.ContentType = val
 							}
 
