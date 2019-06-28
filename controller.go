@@ -231,8 +231,10 @@ var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 
 	a := GetAttachment(attachID)
 
-	w.Header().Set("Content-Disposition", a.ContentType)
-	w.Header().Set("Content-Type", a.MimeType)
+	for key, val := range a.Headers {
+		w.Header().Set(key, val)
+	}
+
 	w.Header().Set("Expires", "0")
 	w.Header().Set("Content-Length", strconv.Itoa(int(a.Size)))
 
