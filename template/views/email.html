@@ -1,5 +1,7 @@
 {{define "content"}}
 
+{{$url := .URL}}
+
 <div class="page-heading">            
     <h1>{{.Thread.Subject}}</h1>
 </div>
@@ -19,10 +21,35 @@
                         <h6>Date: {{ $row.EmailDate }}</h6>
                     
                     </div>
+
+                    {{if $row.Attachments}}
+
+                        <div class="panel-header p10">
+                        
+                        {{ range $akey, $arow := $row.Attachments }}
+
+                            <a href="{{$url}}/attachment/{{ $arow }}">{{ $akey }}. attach </a>
+
+                        {{ end }}
+
+                        </div>
+
+                    {{end}}
+
                     <div class="panel-body">    
 
-                        {{ $row.HTML }}
+                        {{if $row.HTML}}
 
+                            {{ $row.HTML }}
+
+                        {{else if $row.Text}}
+
+                            <pre>
+                                {{ $row.Text }}
+                            </pre>
+
+                        {{end}}
+                        
                     </div>
                 </div>
 
