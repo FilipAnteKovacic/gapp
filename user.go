@@ -136,3 +136,35 @@ func GetUserByEmail(email string) User {
 	return row
 
 }
+
+// CheckUser check if user is active
+func CheckUser(eml, pwd string) string {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "checkUser",
+	}
+
+	defer SaveLog(proc)
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("users")
+	defer DB.Close()
+
+	u := User{}
+	err := DBC.Find(bson.M{"email": eml}).One(&u)
+	if err != nil {
+		HandleError(proc, "user not found: "+eml+" - error: ", err, true)
+		return ""
+	}
+
+	if ComparePasswords(u.Password, pwd) {
+
+		return u.ID.Hex()
+
+	}
+
+	return ""
+}

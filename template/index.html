@@ -25,6 +25,30 @@
 
     <body class="focused-form">
 
+        {{ if .N.HaveNotfications }}
+
+            <div class="col-sm-12">
+
+                {{ range $key, $row := .N.Notifications }}
+
+                    <div class="alert  alert-{{ $row.Type }} alert-dismissible fade show" role="alert">
+                        <span class="badge badge-pill badge-{{ $row.Type }}">
+                            {{ $row.Title }}
+                        </span> 
+                        {{ $row.Text }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+
+                {{ end }}
+
+            </div>
+
+        {{ end }}
+
+
+
         {{template "content" .}}
 
     <!-- Load site level scripts -->

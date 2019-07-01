@@ -33,6 +33,6 @@ BUILDING CONTINER
 
 
 - syncers
-- login
+
 
 
