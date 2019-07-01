@@ -24,6 +24,7 @@ func StartApp() {
 	muxRouter.Handle("/register", AuthController).Methods("GET", "POST")
 
 	muxRouter.Handle("/token/{email}", TokenController).Methods("GET", "POST")
+
 	muxRouter.Handle("/sync/{email}", SyncController).Methods("GET", "POST")
 
 	muxRouter.Handle("/emails", MailsController).Methods("GET", "POST")

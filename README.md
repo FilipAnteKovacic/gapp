@@ -32,10 +32,7 @@ BUILDING CONTINER
     docker pull registry.gitlab.com/tmcsolutions/gapp:v1
 
 
-
-
-
-- attachment - attachment larger than 16mb
+- syncers
 - login
 
 

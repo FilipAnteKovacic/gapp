@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -70,7 +71,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 	vars := mux.Vars(r)
 
-	user := GetUserByEmail("it@ulixtravel.com")
+	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
 	labels := GetLabels(user)
 
 	thread := GetThread(vars["treadID"], user.Email)
@@ -108,7 +109,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 // MailsController handle other requests
 var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	user := GetUserByEmail("it@ulixtravel.com")
+	user := GetUserByEmail("filip.ante.kovacic@gmail.com")
 	stats := GetGMailsStats(user)
 	labels := GetLabels(user)
 
@@ -242,11 +243,29 @@ var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Expires", "0")
 	w.Header().Set("Content-Length", strconv.Itoa(int(a.Size)))
 
-	decoded, err := base64.URLEncoding.DecodeString(a.Data)
-	if err != nil {
-		log.Fatalf("Unable to decode attachment: %v", err)
+	if a.Data == "gridFS" {
+
+		gridFile := GetAttachmentGridFS(a)
+
+		defer gridFile.Close()
+
+		fileHeader := make([]byte, 1024)
+		gridFile.Read(fileHeader)
+
+		gridFile.Seek(0, 0)
+		io.Copy(w, gridFile)
+
+		//http.ServeContent(w, r, attach.Filename, time.Now(), gridFile) // Use proper last mod time
+
+	} else {
+
+		decoded, err := base64.URLEncoding.DecodeString(a.Data)
+		if err != nil {
+			log.Fatalf("Unable to decode attachment: %v", err)
+		}
+		http.ServeContent(w, r, a.Filename, time.Now(), bytes.NewReader(decoded))
+
 	}
-	http.ServeContent(w, r, a.Filename, time.Now(), bytes.NewReader(decoded))
 
 })
 

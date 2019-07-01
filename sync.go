@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"html/template"
+	"io"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -14,54 +17,6 @@ import (
 	emailaddress "github.com/mcnijman/go-emailaddress"
 	gmail "google.golang.org/api/gmail/v1"
 )
-
-// Syncer struct for sync queries
-type Syncer struct {
-	ID           bson.ObjectId `json:"id" bson:"_id,omitempty"`
-	Owner        string        `json:"owner" bson:"owner,omitempty"`
-	Query        string        `json:"query" bson:"query,omitempty"`
-	Start        time.Time     `json:"start" bson:"start,omitempty"`
-	End          time.Time     `json:"end" bson:"end,omitempty"`
-	ThreadsCount int           `json:"count" bson:"count,omitempty"`
-	LastID       string        `json:"lastID" bson:"lastID,omitempty"`
-}
-
-// CRUDSyncer save syncer
-func CRUDSyncer(sync Syncer, mongoC *mgo.Collection) {
-
-	proc := ServiceLog{
-		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "CRUDSyncer",
-	}
-
-	queryCheck := bson.M{"owner": sync.Owner, "query": sync.Query}
-
-	actRes := Syncer{}
-	err := mongoC.Find(queryCheck).One(&actRes)
-
-	if err != nil {
-
-		err = mongoC.Insert(sync)
-		if err != nil {
-			HandleError(proc, "error while inserting row", err, true)
-			return
-		}
-
-		return
-
-	}
-
-	change := bson.M{"$set": sync}
-	err = mongoC.Update(queryCheck, change)
-	if err != nil {
-		HandleError(proc, "error while updateing row", err, true)
-		return
-	}
-	return
-
-}
 
 // BackupGMail use syncer struct to start sync from GMail api
 func BackupGMail(syncer Syncer) {
@@ -76,11 +31,10 @@ func BackupGMail(syncer Syncer) {
 	defer SaveLog(proc)
 
 	DBC := MongoSession()
-	mongoCS := DBC.DB("gmail").C("syncers")
 	defer DBC.Close()
 
 	// init save syncer
-	CRUDSyncer(syncer, mongoCS)
+	CRUDSyncer(syncer, DBC)
 
 	user := GetUserByEmail(syncer.Owner)
 
@@ -111,7 +65,6 @@ func BackupGMail(syncer Syncer) {
 
 		var wgCostDrv sync.WaitGroup
 
-		log.Printf("Processing %v threads...\n", len(r.Threads))
 		for _, thread := range r.Threads {
 
 			syncer.ThreadsCount++
@@ -132,7 +85,7 @@ func BackupGMail(syncer Syncer) {
 
 	syncer.End = time.Now()
 
-	CRUDSyncer(syncer, mongoCS)
+	CRUDSyncer(syncer, DBC)
 }
 
 // ProccessGmailThread process single thread
@@ -146,11 +99,6 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 	}
 
 	defer SaveLog(proc)
-
-	mongoCT := DBC.DB("gmail").C("threads")
-	mongoCM := DBC.DB("gmail").C("messages")
-	mongoCMR := DBC.DB("gmail").C("messagesRaw")
-	mongoCL := DBC.DB("gmail").C("labels")
 
 	// Init thread
 	t := Thread{
@@ -254,14 +202,14 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 			}
 
-			SaveLabels(msg.LabelIds, user, mongoCL)
+			SaveLabels(msg.LabelIds, user, DBC)
 
-			CRUDRawMessage(msgo, mongoCMR)
-			CRUDThreadMessage(mtread, mongoCM)
+			CRUDRawMessage(msgo, DBC)
+			CRUDThreadMessage(mtread, DBC)
 
 		}
 
-		CRUDThread(t, mongoCT)
+		CRUDThread(t, DBC)
 	}
 
 	wgi.Done()
@@ -282,8 +230,6 @@ func ProcessMessageParts(msgID string, user User, parts []*gmail.MessagePart, sv
 	defer SaveLog(proc)
 
 	if len(parts) != 0 {
-
-		mongoCA := DBC.DB("gmail").C("attachments")
 
 		for _, p := range parts {
 
@@ -347,7 +293,7 @@ func ProcessMessageParts(msgID string, user User, parts []*gmail.MessagePart, sv
 
 					mtread.Attachments = append(mtread.Attachments, am)
 
-					CRUDAttachment(a, mongoCA)
+					CRUDAttachment(a, DBC)
 
 				}
 
@@ -384,6 +330,56 @@ func ParseMessageHeaders(headers []*gmail.MessagePartHeader) map[string]string {
 	return h
 }
 
+// Syncer struct for sync queries
+type Syncer struct {
+	ID           bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Owner        string        `json:"owner" bson:"owner,omitempty"`
+	Query        string        `json:"query" bson:"query,omitempty"`
+	Start        time.Time     `json:"start" bson:"start,omitempty"`
+	End          time.Time     `json:"end" bson:"end,omitempty"`
+	ThreadsCount int           `json:"count" bson:"count,omitempty"`
+	LastID       string        `json:"lastID" bson:"lastID,omitempty"`
+}
+
+// CRUDSyncer save syncer
+func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "CRUDSyncer",
+	}
+
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("syncers")
+
+	queryCheck := bson.M{"owner": sync.Owner, "query": sync.Query}
+
+	actRes := Syncer{}
+	err := mongoC.Find(queryCheck).One(&actRes)
+
+	if err != nil {
+
+		err = mongoC.Insert(sync)
+		if err != nil {
+			HandleError(proc, "error while inserting row", err, true)
+			return
+		}
+
+		return
+
+	}
+
+	change := bson.M{"$set": sync}
+	err = mongoC.Update(queryCheck, change)
+	if err != nil {
+		HandleError(proc, "error while updateing row", err, true)
+		return
+	}
+	return
+
+}
+
 // Thread struct for threads from email
 type Thread struct {
 	ID           bson.ObjectId `json:"id" bson:"_id,omitempty"`
@@ -404,7 +400,7 @@ type Thread struct {
 }
 
 // CRUDThread save attachment
-func CRUDThread(thread Thread, mongoC *mgo.Collection) {
+func CRUDThread(thread Thread, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -412,6 +408,8 @@ func CRUDThread(thread Thread, mongoC *mgo.Collection) {
 		Service: "gmailSync",
 		Name:    "CRUDThread",
 	}
+
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("threads")
 
 	queryCheck := bson.M{"threadID": thread.ThreadID}
 
@@ -471,7 +469,7 @@ type MessageAttachment struct {
 }
 
 // CRUDThreadMessage save messages for view
-func CRUDThreadMessage(msg ThreadMessage, mongoC *mgo.Collection) {
+func CRUDThreadMessage(msg ThreadMessage, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -479,6 +477,8 @@ func CRUDThreadMessage(msg ThreadMessage, mongoC *mgo.Collection) {
 		Service: "gmailSync",
 		Name:    "CRUDMessages",
 	}
+
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("messages")
 
 	queryCheck := bson.M{"owner": msg.Owner, "msgID": msg.MsgID, "threadID": msg.ThreadID}
 
@@ -523,7 +523,7 @@ type RawMessage struct {
 }
 
 // CRUDRawMessage save raw messages
-func CRUDRawMessage(msg RawMessage, mongoC *mgo.Collection) {
+func CRUDRawMessage(msg RawMessage, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -531,6 +531,8 @@ func CRUDRawMessage(msg RawMessage, mongoC *mgo.Collection) {
 		Service: "gmailSync",
 		Name:    "CRUDMessages",
 	}
+
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("messagesRaw")
 
 	queryCheck := bson.M{"owner": msg.Owner, "msgID": msg.MsgID, "threadID": msg.ThreadID}
 
@@ -563,6 +565,7 @@ func CRUDRawMessage(msg RawMessage, mongoC *mgo.Collection) {
 // Attachment struct for attachments
 type Attachment struct {
 	ID          bson.ObjectId     `json:"id" bson:"_id,omitempty"`
+	GridID      bson.ObjectId     `json:"gridID" bson:"gridID,omitempty"`
 	Owner       string            `json:"owner" bson:"owner,omitempty"`
 	AttachID    string            `json:"attachID" bson:"attachID,omitempty"`
 	MsgID       string            `json:"msgID" bson:"msgID,omitempty"`
@@ -576,7 +579,7 @@ type Attachment struct {
 }
 
 // CRUDAttachment save attachment
-func CRUDAttachment(attch Attachment, mongoC *mgo.Collection) {
+func CRUDAttachment(attch Attachment, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -585,12 +588,58 @@ func CRUDAttachment(attch Attachment, mongoC *mgo.Collection) {
 		Name:    "CRUDAttachment",
 	}
 
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("attachments")
+
 	queryCheck := bson.M{"owner": attch.Owner, "attachID": attch.AttachID}
 
 	actRes := Attachment{}
 	err := mongoC.Find(queryCheck).One(&actRes)
 
 	if err != nil {
+
+		if attch.Size > 150000 {
+
+			DB := mgo.Database{
+				Name:    os.Getenv("MONGO_DB"),
+				Session: DBC,
+			}
+			gridFile, err := DB.GridFS("attachments").Create(attch.Filename)
+			if err != nil {
+				log.Fatalf("Unable to create gridfs: %v", err)
+			}
+
+			gridFile.SetContentType(attch.ContentType)
+			gridFile.SetChunkSize(1024)
+
+			attch.GridID = (gridFile.Id().(bson.ObjectId))
+
+			decoded, err := base64.URLEncoding.DecodeString(attch.Data)
+			if err != nil {
+				log.Fatalf("Unable to decode attachment: %v", err)
+			}
+			reader := bytes.NewReader(decoded)
+
+			// make a buffer to keep chunks that are read
+			buf := make([]byte, 1024)
+			for {
+				// read a chunk
+				n, err := reader.Read(buf)
+				if err != nil && err != io.EOF {
+					log.Fatalf("Could not read the input file: %v", err)
+				}
+				if n == 0 {
+					break
+				}
+				// write a chunk
+				if _, err := gridFile.Write(buf[:n]); err != nil {
+					log.Fatalf("Could not write to GridFs for : %v"+gridFile.Name(), err)
+				}
+			}
+			gridFile.Close()
+
+			attch.Data = "gridFS"
+
+		}
 
 		err = mongoC.Insert(attch)
 		if err != nil {
@@ -602,14 +651,15 @@ func CRUDAttachment(attch Attachment, mongoC *mgo.Collection) {
 
 	}
 
-	change := bson.M{"$set": attch}
-	err = mongoC.Update(queryCheck, change)
-	if err != nil {
-		HandleError(proc, "error while updateing row", err, true)
+	/*
+		change := bson.M{"$set": attch}
+		err = mongoC.Update(queryCheck, change)
+		if err != nil {
+			HandleError(proc, "error while updateing row", err, true)
+			return
+		}
 		return
-	}
-	return
-
+	*/
 }
 
 // Label struct for mail labels
@@ -620,7 +670,7 @@ type Label struct {
 }
 
 // SaveLabels save labels
-func SaveLabels(labels []string, user User, mongoC *mgo.Collection) {
+func SaveLabels(labels []string, user User, DBC *mgo.Session) {
 
 	if len(labels) != 0 {
 
@@ -631,7 +681,7 @@ func SaveLabels(labels []string, user User, mongoC *mgo.Collection) {
 				Owner: user.Email,
 			}
 
-			CRUDLabel(l, mongoC)
+			CRUDLabel(l, DBC)
 
 		}
 
@@ -640,7 +690,7 @@ func SaveLabels(labels []string, user User, mongoC *mgo.Collection) {
 }
 
 // CRUDLabel save label
-func CRUDLabel(label Label, mongoC *mgo.Collection) {
+func CRUDLabel(label Label, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -648,6 +698,8 @@ func CRUDLabel(label Label, mongoC *mgo.Collection) {
 		Service: "gmailSync",
 		Name:    "CRUDLabel",
 	}
+
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("labels")
 
 	queryCheck := bson.M{"name": label.Name, "owner": label.Owner}
 

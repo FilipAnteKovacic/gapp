@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -34,6 +35,34 @@ func GetAttachment(attachID string) Attachment {
 	}
 
 	return attach
+
+}
+
+// GetAttachmentGridFS get attachment from GridFS
+func GetAttachmentGridFS(attach Attachment) *mgo.GridFile {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetAttachmentGridFS",
+	}
+
+	DB := MongoSession()
+	defer DB.Close()
+
+	DBC := mgo.Database{
+		Name:    os.Getenv("MONGO_DB"),
+		Session: DB,
+	}
+
+	gridFile, err := DBC.GridFS("attachments").OpenId(attach.GridID)
+	if err != nil {
+		HandleError(proc, "get attachment", err, true)
+		return nil
+	}
+
+	return gridFile
 
 }
 
