@@ -57,6 +57,7 @@ type EPage struct {
 	View     string
 	N        Notifications
 	User     User
+	Stats    GStats
 	Labels   map[string][]Label
 	Thread   Thread
 	Messages []ThreadMessage
@@ -80,6 +81,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		vars := mux.Vars(r)
 
 		user := GetUser(CookieValid(r))
+		stats := GetGMailsStats(user)
 		labels := GetLabelsByType(user)
 
 		thread := GetThread(vars["treadID"], user.Email)
@@ -90,6 +92,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			View:     "email",
 			URL:      os.Getenv("URL"),
 			User:     user,
+			Stats:    stats,
 			Labels:   labels,
 			Thread:   thread,
 			Messages: messages,
