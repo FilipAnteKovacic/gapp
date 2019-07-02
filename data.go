@@ -490,29 +490,19 @@ func GetAttachment(attachID string) Attachment {
 
 // Label struct for mail labels
 type Label struct {
-	ID    bson.ObjectId `json:"id" bson:"_id,omitempty"`
-	Owner string        `json:"owner" bson:"owner,omitempty"`
-	Name  string        `json:"name" bson:"name,omitempty"`
-}
-
-// SaveLabels save labels
-func SaveLabels(labels []string, user User, DBC *mgo.Session) {
-
-	if len(labels) != 0 {
-
-		for _, name := range labels {
-
-			l := Label{
-				Name:  name,
-				Owner: user.Email,
-			}
-
-			CRUDLabel(l, DBC)
-
-		}
-
-	}
-
+	ID                    bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	LabelID               string        `json:"labelID" bson:"labelID"`
+	Owner                 string        `json:"owner" bson:"owner,omitempty"`
+	Name                  string        `json:"name" bson:"name,omitempty"`
+	Type                  string        `json:"type" bson:"type,omitempty"`
+	LabelListVisibility   string        `json:"labelListVisibility" bson:"labelListVisibility,omitempty"`
+	MessageListVisibility string        `json:"messageListVisibility" bson:"messageListVisibility,omitempty"`
+	MessagesTotal         int64         `json:"messagesTotal" bson:"messagesTotal,omitempty"`
+	MessagesUnread        int64         `json:"messagesUnread" bson:"messagesUnread,omitempty"`
+	ThreadsTotal          int64         `json:"threadsTotal" bson:"threadsTotal,omitempty"`
+	ThreadsUnread         int64         `json:"threadsUnread" bson:"threadsUnread,omitempty"`
+	BackgroundColor       string        `json:"backgroundColor" bson:"backgroundColor,omitempty"`
+	TextColor             string        `json:"textColor" bson:"textColor,omitempty"`
 }
 
 // CRUDLabel save label
@@ -527,7 +517,7 @@ func CRUDLabel(label Label, DBC *mgo.Session) {
 
 	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("labels")
 
-	queryCheck := bson.M{"name": label.Name, "owner": label.Owner}
+	queryCheck := bson.M{"labelID": label.LabelID, "owner": label.Owner}
 
 	actRes := Label{}
 	err := mongoC.Find(queryCheck).One(&actRes)
@@ -551,6 +541,119 @@ func CRUDLabel(label Label, DBC *mgo.Session) {
 		return
 	}
 	return
+
+}
+
+// GetLabels return all labels from db by user
+func GetLabels(user User) []Label {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetGMailLabels",
+	}
+
+	defer SaveLog(proc)
+
+	var gdata []Label
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("labels")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"owner": user.Email}).Sort("-threadsTotal").All(&gdata)
+	if err != nil {
+		HandleError(proc, "get snippets", err, true)
+		return gdata
+	}
+
+	return gdata
+
+}
+
+// GetLabelsList return all labels by type from db by user
+func GetLabelsList(user User) (string, map[string]string) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetLabelsByType",
+	}
+
+	defer SaveLog(proc)
+
+	firstLabel := ""
+	var gdata []Label
+
+	ls := make(map[string]string)
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("labels")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"owner": user.Email}).Sort("-threadsTotal").All(&gdata)
+	if err != nil {
+		HandleError(proc, "get snippets", err, true)
+		return firstLabel, ls
+	}
+
+	if len(gdata) != 0 {
+
+		for k, l := range gdata {
+
+			if k == 0 {
+				firstLabel = l.Name
+			}
+
+			ls[l.LabelID] = l.Name
+
+		}
+
+	}
+
+	return firstLabel, ls
+
+}
+
+// GetLabelsByType return all labels by type from db by user
+func GetLabelsByType(user User) map[string][]Label {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetLabelsByType",
+	}
+
+	defer SaveLog(proc)
+
+	var gdata []Label
+
+	ls := make(map[string][]Label)
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("labels")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"owner": user.Email}).Sort("-threadsTotal").All(&gdata)
+	if err != nil {
+		HandleError(proc, "get snippets", err, true)
+		return ls
+	}
+
+	if len(gdata) != 0 {
+
+		for _, l := range gdata {
+
+			ls[l.Type] = append(ls[l.Type], l)
+
+		}
+
+	}
+
+	return ls
 
 }
 
@@ -639,42 +742,5 @@ func GetGMailsStats(user User) GStats {
 	}
 
 	return stats
-
-}
-
-// GetLabels return all labels from db by user
-func GetLabels(user User) []string {
-
-	proc := ServiceLog{
-		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "GetGMailLabels",
-	}
-
-	defer SaveLog(proc)
-
-	var gdata []Label
-	var labels []string
-
-	DB := MongoSession()
-	DBC := DB.DB(os.Getenv("MONGO_DB")).C("labels")
-	defer DB.Close()
-
-	err := DBC.Find(bson.M{"owner": user.Email}).Sort("name").All(&gdata)
-	if err != nil {
-		HandleError(proc, "get snippets", err, true)
-		return labels
-	}
-
-	if len(gdata) != 0 {
-
-		for _, l := range gdata {
-			labels = append(labels, l.Name)
-		}
-
-	}
-
-	return labels
 
 }

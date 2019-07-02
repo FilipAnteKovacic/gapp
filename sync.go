@@ -43,6 +43,55 @@ func BackupGMail(syncer Syncer) {
 		return
 	}
 
+	req := svc.Users.Labels.List(user.Email)
+
+	r, err := req.Do()
+	if err != nil {
+		HandleError(proc, "Unable to retrieve threads", err, true)
+		return
+	}
+
+	if len(r.Labels) != 0 {
+
+		for _, label := range r.Labels {
+
+			lreq := svc.Users.Labels.Get(user.Email, label.Id)
+
+			lr, err := lreq.Do()
+			if err != nil {
+				HandleError(proc, "Unable to retrieve threads", err, true)
+				return
+			}
+
+			l := Label{
+				LabelID:               lr.Id,
+				Owner:                 user.Email,
+				Name:                  lr.Name,
+				Type:                  lr.Type,
+				LabelListVisibility:   lr.LabelListVisibility,
+				MessageListVisibility: lr.MessageListVisibility,
+				MessagesTotal:         lr.MessagesTotal,
+				MessagesUnread:        lr.MessagesUnread,
+				ThreadsTotal:          lr.ThreadsTotal,
+				ThreadsUnread:         lr.ThreadsUnread,
+			}
+
+			if lr.Color != nil {
+				if lr.Color.BackgroundColor != "" {
+					l.BackgroundColor = lr.Color.BackgroundColor
+				}
+
+				if lr.Color.TextColor != "" {
+					l.TextColor = lr.Color.TextColor
+				}
+			}
+
+			CRUDLabel(l, DBC)
+
+		}
+
+	}
+
 	syncer.ThreadsCount = 0
 
 	//Gmail API page loop
@@ -197,8 +246,6 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 				t.EmailDate = mtread.EmailDate
 
 			}
-
-			SaveLabels(msg.LabelIds, user, DBC)
 
 			CRUDRawMessage(msgo, DBC)
 			CRUDThreadMessage(mtread, DBC)
