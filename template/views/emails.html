@@ -3,7 +3,9 @@
 {{$url := .URL}}
 
 <div class="page-heading">            
-    <h1>Gmail</h1>
+    <h1>
+		Gmail | {{.User.Email}} <small>Total: {{.Stats.Count}} threads synced</small>
+	</h1>
 
 	<form action="{{$url}}/emails" method="GET" class="form-horizontal">
 
@@ -26,9 +28,24 @@
             <div class="inbox-menu">
                 <div class="collapsible-menu" style="border-top: 0;">
 
-					{{ range $LKey, $LName := .Labels }}
+					{{ range $LabelCat, $Labels := .Labels }}
 
-					<a href="{{$url}}/emails?label={{ $LName }}" class="inbox-menu-item">{{ $LName }}</a>
+						<span class="inbox-leftbar-category clearfix">
+							<a href="#" class="category-heading" >{{ $LabelCat }}</a>
+						</span>
+
+						{{ range $Labels }}
+
+							<a style="text-align: left;"
+								href="{{$url}}/emails?label={{ .LabelID }}"
+								class="inbox-menu-item label">
+
+								{{ .Name }}  
+								<span class="badge"> {{ .ThreadsTotal }} </span>
+								
+							</a>
+
+						{{ end }}
 
 					{{ end }}
 
@@ -37,17 +54,18 @@
 		</div>
 		<div class="col-md-10">
 			<div class="panel panel-inbox">
+
 				<div class="panel-body">
 					<div class="inbox-mail-heading">
 						<div class="clearfix">
 							
 							<div class="pull-left hidden-xs">
-								{{.Count}}  / {{.Stats.Count}} threads
+								{{.LabelName}}
 							</div>
 
 						    <div class="pull-right hidden-xs">
 						    	<span class="mr10 pull-left" style="margin-top: 9px;">
-									<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}}</strong>
+									<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}} / {{.Count}} threads</strong>
 								</span>
 						    	<div class="btn-group pull-right">
 		                            <a href="?page={{.Paggining.PreviousPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default141">
@@ -57,6 +75,7 @@
 										<i class="fa fa-fw fa-angle-right"></i>
 									</a>
 		                        </div>
+
 						    </div>
 
 						</div>
@@ -71,12 +90,13 @@
 										<div>
 											{{ $row.From }}
 										</div>
-
-										<small>{{ $row.MsgCount }}<small>
 									</td>
+									<td>{{ $row.MsgCount }}</td>
 									<td class="inbox-msg-snip">
-										<p><strong>{{ $row.Subject }} </strong></p>
-										<p>{{ $row.Snippet }} </p>
+										<p class="mb0">
+											<strong>{{ $row.Subject }} </strong>
+										</p>
+										<small>{{ $row.Snippet }}</small>
 									</td>
 									<td class="inbox-msg-time" width="12%">
 										{{ $row.EmailDate }} 
@@ -91,12 +111,12 @@
 						<div class="clearfix">
 
 							<div class="pull-left hidden-xs">
-								{{.Count}}  / {{.Stats.Count}} threads
+								
 							</div>
 
 						    <div class="pull-right hidden-xs">
 						    	<span class="mr10 pull-left" style="margin-top: 9px;">
-									<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}}</strong>
+									<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}} / {{.Count}} threads</strong>
 								</span>
 						    	<div class="btn-group pull-right">
 		                            <a href="?page={{.Paggining.PreviousPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default141">

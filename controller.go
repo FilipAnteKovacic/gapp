@@ -43,8 +43,9 @@ type EsPage struct {
 	Count     int
 	Paggining GPagging
 	Label     string
+	LabelName string
 	Search    string
-	Labels    []string
+	Labels    map[string][]Label
 	Emails    []Thread
 }
 
@@ -56,7 +57,7 @@ type EPage struct {
 	View     string
 	N        Notifications
 	User     User
-	Labels   []string
+	Labels   map[string][]Label
 	Thread   Thread
 	Messages []ThreadMessage
 }
@@ -79,7 +80,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		vars := mux.Vars(r)
 
 		user := GetUser(CookieValid(r))
-		labels := GetLabels(user)
+		labels := GetLabelsByType(user)
 
 		thread := GetThread(vars["treadID"], user.Email)
 		messages := GetThreadMessages(user, vars["treadID"])
@@ -100,7 +101,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		)
 
 		if err != nil {
-			log.Println("Error ParseFiles:", err)
+			log.Println("Error ParseFiles: "+p.View, err)
 			return
 		}
 
@@ -124,7 +125,8 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 		user := GetUser(CookieValid(r))
 		stats := GetGMailsStats(user)
-		labels := GetLabels(user)
+		firstLabel, labelsList := GetLabelsList(user)
+		labelsByType := GetLabelsByType(user)
 
 		search := r.FormValue("search")
 
@@ -132,8 +134,8 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		label = r.FormValue("label")
 		if label == "" {
 
-			if len(labels) != 0 && search == "" {
-				label = labels[0]
+			if firstLabel != "" && search == "" {
+				label = firstLabel
 			}
 
 		}
@@ -162,11 +164,15 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			User:      user,
 			Search:    search,
 			Label:     label,
-			Labels:    labels,
+			Labels:    labelsByType,
 			Emails:    emails,
 			Count:     gcount,
 			Paggining: gp,
 			Stats:     stats,
+		}
+
+		if val, ok := labelsList[label]; ok {
+			p.LabelName = val
 		}
 
 		parsedTemplate, err := template.ParseFiles(
@@ -175,7 +181,7 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		)
 
 		if err != nil {
-			log.Println("Error ParseFiles:", err)
+			log.Println("Error ParseFiles: "+p.View, err)
 			return
 		}
 
@@ -232,7 +238,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		)
 
 		if err != nil {
-			log.Println("Error ParseFiles:", err)
+			log.Println("Error ParseFiles: "+p.View, err)
 			return
 		}
 
@@ -476,7 +482,7 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	)
 
 	if err != nil {
-		log.Println("Error ParseFiles:", err)
+		log.Println("Error ParseFiles: "+p.View, err)
 		return
 	}
 

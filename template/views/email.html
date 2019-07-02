@@ -3,7 +3,9 @@
 {{$url := .URL}}
 
 <div class="page-heading">            
-    <h1>Gmail</h1>
+    <h1>
+		Gmail | {{.User.Email}} <small>Total: {{.Stats.Count}} threads synced</small>
+	</h1>
 
 	<form action="{{$url}}/emails" method="GET" class="form-horizontal">
 
@@ -23,12 +25,28 @@
                                  
 	<div class="row">
 		<div class="col-md-2">
+        
             <div class="inbox-menu">
                 <div class="collapsible-menu" style="border-top: 0;">
 
-					{{ range $LKey, $LName := .Labels }}
+					{{ range $LabelCat, $Labels := .Labels }}
 
-					<a href="{{$url}}/emails?label={{ $LName }}" class="inbox-menu-item">{{ $LName }}</a>
+						<span class="inbox-leftbar-category clearfix">
+							<a href="#" class="category-heading" >{{ $LabelCat }}</a>
+						</span>
+
+						{{ range $Labels }}
+
+							<a style="text-align: left;"
+								href="{{$url}}/emails?label={{ .LabelID }}"
+								class="inbox-menu-item label">
+
+								{{ .Name }}
+								<span class="badge"> {{ .ThreadsTotal }} </span>
+								
+							</a>
+
+						{{ end }}
 
 					{{ end }}
 
