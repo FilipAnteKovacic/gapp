@@ -1,0 +1,22 @@
+{{define "header"}}
+
+<header id="topnav" class="navbar navbar-midnightblue navbar-fixed-top clearfix" role="banner">
+
+    <div class="yamm navbar-left navbar-collapse collapse in">
+        <ul class="nav navbar-nav">
+            <li><a href="{{.URL}}/emails" >Emails</a></li>
+            <li><a href="{{.URL}}/syncers" >Syncers</a></li>
+        </ul>
+    </div>
+
+    <ul class="nav navbar-nav toolbar pull-right">
+
+        <li class="dropdown toolbar-icon-bg">
+            <a href="{{.URL}}/logout">Logout</a>
+        </li>
+
+    </ul>
+
+</header>
+
+{{end}}

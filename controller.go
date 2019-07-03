@@ -110,6 +110,7 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 		parsedTemplate, err := template.ParseFiles(
 			"template/index.html",
+			"template/header.html",
 			"template/views/"+p.View+".html",
 		)
 
@@ -190,6 +191,7 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 		parsedTemplate, err := template.ParseFiles(
 			"template/index.html",
+			"template/header.html",
 			"template/views/"+p.View+".html",
 		)
 
@@ -294,6 +296,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 		parsedTemplate, err := template.ParseFiles(
 			"template/index.html",
+			"template/header.html",
 			"template/views/"+p.View+".html",
 		)
 
@@ -382,7 +385,7 @@ var TokenController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 		UpdateUser(u.ID.Hex(), u)
 
-		http.Redirect(w, r, os.Getenv("URL")+"/sync/"+u.Email, 301)
+		http.Redirect(w, r, os.Getenv("URL")+"/syncers/", 301)
 
 	}
 

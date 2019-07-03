@@ -16,6 +16,9 @@ os.Getenv("MONGO_DB")
 GO RUN PROGRAM
 LOOP=60 go run *.go
 
+
+MONGO_CONN="192.168.1.221:27017" MONGO_DB="gmail" URL="http://192.168.1.221:8400/" APP_PORT="80" LOG="true" PRINT_ERROR="true" go run *.go
+
 MONGO_CONN="localhost:27017" MONGO_DB="gmail" URL="http://localhost:8080/" APP_PORT="8080" LOG="true" PRINT_ERROR="true" go run *.go
 
 BUILDING CONTINER
