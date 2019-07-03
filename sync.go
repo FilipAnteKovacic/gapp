@@ -14,6 +14,45 @@ import (
 	gmail "google.golang.org/api/gmail/v1"
 )
 
+func GetGService(user User) *gmail.Service {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "RefreshToken",
+	}
+
+	/*
+		//Check if token is valid
+		if user.Token.Expiry.Add(time.Hour*time.Duration(2)).Format("2006-01-02 15:04:05") < time.Now().Format("2006-01-02 15:04:05") {
+
+			tokenSource := user.Config.TokenSource(context.Background(), user.Token)
+			sourceToken := oauth2.ReuseTokenSource(nil, tokenSource)
+			t, _ := sourceToken.Token()
+			client := user.Config.Client(context.Background(), t)
+			svc, err := gmail.New(client)
+			if err != nil {
+				HandleError(proc, "Unable to create Gmail service", err, true)
+				return nil
+			}
+
+			return svc
+
+		}
+	*/
+	// get client for using Gmail API
+	client := user.Config.Client(context.Background(), user.Token)
+	svc, err := gmail.New(client)
+	if err != nil {
+		HandleError(proc, "Unable to create Gmail service", err, true)
+		return nil
+	}
+
+	return svc
+
+}
+
 // BackupGMail use syncer struct to start sync from GMail api
 func BackupGMail(syncer Syncer) {
 
@@ -33,104 +72,100 @@ func BackupGMail(syncer Syncer) {
 	CRUDSyncer(syncer, DBC)
 
 	user := GetUserByEmail(syncer.Owner)
+	svc := GetGService(user)
 
-	// get client for using Gmail API
-	client := user.Config.Client(context.Background(), user.Token)
+	if svc != nil {
 
-	svc, err := gmail.New(client)
-	if err != nil {
-		HandleError(proc, "Unable to create Gmail service", err, true)
-		return
-	}
+		req := svc.Users.Labels.List(user.Email)
 
-	req := svc.Users.Labels.List(user.Email)
-
-	r, err := req.Do()
-	if err != nil {
-		HandleError(proc, "Unable to retrieve threads", err, true)
-		return
-	}
-
-	if len(r.Labels) != 0 {
-
-		for _, label := range r.Labels {
-
-			lreq := svc.Users.Labels.Get(user.Email, label.Id)
-
-			lr, err := lreq.Do()
-			if err != nil {
-				HandleError(proc, "Unable to retrieve threads", err, true)
-				return
-			}
-
-			l := Label{
-				LabelID:               lr.Id,
-				Owner:                 user.Email,
-				Name:                  lr.Name,
-				Type:                  lr.Type,
-				LabelListVisibility:   lr.LabelListVisibility,
-				MessageListVisibility: lr.MessageListVisibility,
-				MessagesTotal:         lr.MessagesTotal,
-				MessagesUnread:        lr.MessagesUnread,
-				ThreadsTotal:          lr.ThreadsTotal,
-				ThreadsUnread:         lr.ThreadsUnread,
-			}
-
-			if lr.Color != nil {
-				if lr.Color.BackgroundColor != "" {
-					l.BackgroundColor = lr.Color.BackgroundColor
-				}
-
-				if lr.Color.TextColor != "" {
-					l.TextColor = lr.Color.TextColor
-				}
-			}
-
-			CRUDLabel(l, DBC)
-
-		}
-
-	}
-
-	syncer.ThreadsCount = 0
-
-	//Gmail API page loop
-	pageToken := ""
-	for {
-
-		req := svc.Users.Threads.List(user.Email).Q(syncer.Query)
-		if pageToken != "" {
-			req.PageToken(pageToken)
-		}
 		r, err := req.Do()
 		if err != nil {
 			HandleError(proc, "Unable to retrieve threads", err, true)
 			return
 		}
 
-		var wgCostDrv sync.WaitGroup
+		if len(r.Labels) != 0 {
 
-		for _, thread := range r.Threads {
+			for _, label := range r.Labels {
 
-			syncer.ThreadsCount++
-			syncer.LastID = string(thread.Id)
+				lreq := svc.Users.Labels.Get(user.Email, label.Id)
 
-			wgCostDrv.Add(1)
-			go ProccessGmailThread(user, thread, svc, DBC, &wgCostDrv)
+				lr, err := lreq.Do()
+				if err != nil {
+					HandleError(proc, "Unable to retrieve threads", err, true)
+					return
+				}
+
+				l := Label{
+					LabelID:               lr.Id,
+					Owner:                 user.Email,
+					Name:                  lr.Name,
+					Type:                  lr.Type,
+					LabelListVisibility:   lr.LabelListVisibility,
+					MessageListVisibility: lr.MessageListVisibility,
+					MessagesTotal:         lr.MessagesTotal,
+					MessagesUnread:        lr.MessagesUnread,
+					ThreadsTotal:          lr.ThreadsTotal,
+					ThreadsUnread:         lr.ThreadsUnread,
+				}
+
+				if lr.Color != nil {
+					if lr.Color.BackgroundColor != "" {
+						l.BackgroundColor = lr.Color.BackgroundColor
+					}
+
+					if lr.Color.TextColor != "" {
+						l.TextColor = lr.Color.TextColor
+					}
+				}
+
+				CRUDLabel(l, DBC)
+
+			}
 
 		}
 
-		wgCostDrv.Wait()
+		syncer.ThreadsCount = 0
 
-		if r.NextPageToken == "" {
-			break
+		//Gmail API page loop
+		pageToken := ""
+		for {
+
+			req := svc.Users.Threads.List(user.Email).Q(syncer.Query)
+			if pageToken != "" {
+				req.PageToken(pageToken)
+			}
+			r, err := req.Do()
+			if err != nil {
+				HandleError(proc, "Unable to retrieve threads", err, true)
+				return
+			}
+
+			var wgCostDrv sync.WaitGroup
+
+			for _, thread := range r.Threads {
+
+				syncer.ThreadsCount++
+				syncer.LastID = string(thread.Id)
+
+				wgCostDrv.Add(1)
+				go ProccessGmailThread(user, thread, svc, DBC, &wgCostDrv)
+
+			}
+
+			wgCostDrv.Wait()
+
+			if r.NextPageToken == "" {
+				break
+			}
+			pageToken = r.NextPageToken
 		}
-		pageToken = r.NextPageToken
+
+		syncer.End = time.Now()
+
+		CRUDSyncer(syncer, DBC)
+
 	}
-
-	syncer.End = time.Now()
-
-	CRUDSyncer(syncer, DBC)
 }
 
 // ProccessGmailThread process single thread

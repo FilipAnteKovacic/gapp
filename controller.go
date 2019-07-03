@@ -276,7 +276,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 				UpdateUser(u.ID.Hex(), u)
 
-				authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOnline)
+				authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 
 				http.Redirect(w, r, authURL, 301)
 
