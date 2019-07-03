@@ -32,7 +32,7 @@ func StartApp() {
 	muxRouter.Handle("/register", AuthController).Methods("GET", "POST")
 	muxRouter.Handle("/logout", AuthController).Methods("GET", "POST")
 
-	muxRouter.Handle("/token/{email}", TokenController).Methods("GET", "POST")
+	muxRouter.Handle("/token/", TokenController).Methods("GET", "POST")
 
 	muxRouter.Handle("/sync/{email}", SyncController).Methods("GET", "POST")
 

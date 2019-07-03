@@ -313,13 +313,9 @@ var TokenController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	if !redirect {
 
 		// URL vars
-		vars := mux.Vars(r)
-
-		email := vars["email"]
 		code := r.FormValue("code")
 
-		u := GetUserByEmail(email)
-
+		u := GetUser(CookieValid(r))
 		tok, err := u.Config.Exchange(context.TODO(), code)
 		if err != nil {
 			log.Fatalf("Unable to retrieve token from web: %v", err)
@@ -446,7 +442,7 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 					log.Fatalf("Unable to parse client secret file to config: %v", err)
 				}
 
-				config.RedirectURL = os.Getenv("URL") + "token/" + u.Email + "/"
+				config.RedirectURL = os.Getenv("URL") + "token/"
 
 				u.Config = config
 
@@ -458,7 +454,7 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 					SetSession(user.ID.Hex(), w)
 
-					authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+					authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOnline)
 
 					http.Redirect(w, r, authURL, 301)
 
