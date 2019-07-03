@@ -127,7 +127,7 @@ func GetUserByEmail(email string) User {
 
 		err := DBC.Find(bson.M{"email": email}).Select(bson.M{"password": 0}).One(&row)
 		if err != nil {
-			HandleError(proc, "get user with id"+email, err, true)
+			HandleError(proc, "get user with id "+email, err, true)
 			return row
 		}
 

@@ -220,7 +220,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 		u := GetUser(CookieValid(r))
 
-		if r.Method == "POST" && u.Token != nil {
+		if r.Method == "POST" {
 
 			if r.FormValue("query") != "" && u.Token != nil {
 
@@ -236,7 +236,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 			}
 
-			if r.FormValue("credentials") != "" {
+			if r.FormValue("save_cred") != "" {
 
 				// Parse our multipart form, 10 << 20 specifies a maximum
 				// upload of 10 MB files.
@@ -264,7 +264,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				}
 
 				// If modifying these scopes, delete your previously saved token.json.
-				config, err := google.ConfigFromJSON(u.Credentials, gmail.GmailReadonlyScope)
+				config, err := google.ConfigFromJSON(fileBytes, gmail.GmailReadonlyScope)
 				if err != nil {
 					log.Fatalf("Unable to parse client secret file to config: %v", err)
 				}
