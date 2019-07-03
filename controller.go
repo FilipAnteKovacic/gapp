@@ -14,11 +14,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gmail "google.golang.org/api/gmail/v1"
-
-	"github.com/gorilla/mux"
 )
 
 //Page struct for pages
@@ -29,6 +28,17 @@ type Page struct {
 	View string
 	N    Notifications
 	User User
+}
+
+//SyncPage struct for email pages
+type SyncPage struct {
+	URL     string
+	Logo    string
+	Name    string
+	View    string
+	N       Notifications
+	User    User
+	Syncers []Syncer
 }
 
 //EsPage struct for email pages
@@ -206,33 +216,80 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 	if !redirect {
 
-		// URL vars
-		vars := mux.Vars(r)
+		u := GetUser(CookieValid(r))
 
-		email := vars["email"]
+		if r.Method == "POST" && u.Token != nil {
 
-		u := GetUserByEmail(email)
+			if r.FormValue("query") != "" && u.Token != nil {
 
-		if r.Method == "POST" {
+				query := r.FormValue("query")
 
-			query := r.FormValue("query")
+				s := Syncer{
+					Owner: u.Email,
+					Query: query,
+					Start: time.Now(),
+				}
 
-			s := Syncer{
-				Owner: u.Email,
-				Query: query,
-				Start: time.Now(),
+				go BackupGMail(s)
+
 			}
 
-			go BackupGMail(s)
+			if r.FormValue("credentials") != "" {
 
-			http.Redirect(w, r, os.Getenv("URL")+"/emails", 301)
+				// Parse our multipart form, 10 << 20 specifies a maximum
+				// upload of 10 MB files.
+				r.ParseMultipartForm(10 << 20)
+				// FormFile returns the first file for the given key `myFile`
+				// it also returns the FileHeader so we can get the Filename,
+				// the Header and the size of the file
+				file, _, err := r.FormFile("credentials")
+				if err != nil {
+					fmt.Println("Error Retrieving the File")
+					fmt.Println(err)
+					return
+				}
+				defer file.Close()
+				/*
+					fmt.Printf("Uploaded File: %+v\n", handler.Filename)
+					fmt.Printf("File Size: %+v\n", handler.Size)
+					fmt.Printf("MIME Header: %+v\n", handler.Header)
+				*/
+				// read all of the contents of our uploaded file into a
+				// byte array
+				fileBytes, err := ioutil.ReadAll(file)
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				// If modifying these scopes, delete your previously saved token.json.
+				config, err := google.ConfigFromJSON(u.Credentials, gmail.GmailReadonlyScope)
+				if err != nil {
+					log.Fatalf("Unable to parse client secret file to config: %v", err)
+				}
+
+				config.RedirectURL = os.Getenv("URL") + "token/"
+
+				u.Config = config
+				u.Credentials = fileBytes
+
+				UpdateUser(u.ID.Hex(), u)
+
+				authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOnline)
+
+				http.Redirect(w, r, authURL, 301)
+
+			}
+
 		}
 
-		p := Page{
-			Name: "Sync",
-			View: "sync",
-			URL:  os.Getenv("URL"),
-			User: u,
+		syncers := GetAllSyncers(u)
+
+		p := SyncPage{
+			Name:    "Sync",
+			View:    "sync",
+			URL:     os.Getenv("URL"),
+			User:    u,
+			Syncers: syncers,
 		}
 
 		parsedTemplate, err := template.ParseFiles(
@@ -405,46 +462,10 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 			if r.Method == "POST" {
 
-				// Parse our multipart form, 10 << 20 specifies a maximum
-				// upload of 10 MB files.
-				r.ParseMultipartForm(10 << 20)
-				// FormFile returns the first file for the given key `myFile`
-				// it also returns the FileHeader so we can get the Filename,
-				// the Header and the size of the file
-				file, _, err := r.FormFile("credentials")
-				if err != nil {
-					fmt.Println("Error Retrieving the File")
-					fmt.Println(err)
-					return
-				}
-				defer file.Close()
-				/*
-					fmt.Printf("Uploaded File: %+v\n", handler.Filename)
-					fmt.Printf("File Size: %+v\n", handler.Size)
-					fmt.Printf("MIME Header: %+v\n", handler.Header)
-				*/
-				// read all of the contents of our uploaded file into a
-				// byte array
-				fileBytes, err := ioutil.ReadAll(file)
-				if err != nil {
-					fmt.Println(err)
-				}
-
 				u := User{
-					Email:       r.FormValue("email"),
-					Password:    HashAndSalt(r.FormValue("password")),
-					Credentials: fileBytes,
+					Email:    r.FormValue("email"),
+					Password: HashAndSalt(r.FormValue("password")),
 				}
-
-				// If modifying these scopes, delete your previously saved token.json.
-				config, err := google.ConfigFromJSON(u.Credentials, gmail.GmailReadonlyScope)
-				if err != nil {
-					log.Fatalf("Unable to parse client secret file to config: %v", err)
-				}
-
-				config.RedirectURL = os.Getenv("URL") + "token/"
-
-				u.Config = config
 
 				checkUser := GetUserByEmail(u.Email)
 				if checkUser.ID.Hex() == "" {
@@ -454,9 +475,7 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 					SetSession(user.ID.Hex(), w)
 
-					authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOnline)
-
-					http.Redirect(w, r, authURL, 301)
+					AppRedirect(w, r, "/syncers", 302)
 
 				} else {
 

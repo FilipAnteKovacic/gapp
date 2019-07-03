@@ -34,7 +34,7 @@ func StartApp() {
 
 	muxRouter.Handle("/token/", TokenController).Methods("GET", "POST")
 
-	muxRouter.Handle("/sync/{email}", SyncController).Methods("GET", "POST")
+	muxRouter.Handle("/syncers/", SyncController).Methods("GET", "POST")
 
 	muxRouter.Handle("/emails", MailsController).Methods("GET", "POST")
 	muxRouter.Handle("/email/{treadID}", MailController).Methods("GET")

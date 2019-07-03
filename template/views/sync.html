@@ -1,46 +1,116 @@
 {{define "content"}}
 
-<div class="container" id="login-form">
-	<div class="row">
 
-		<h2 class="login-logo">
-            Gmail Backup - Sync Query
-        </h2>
 
-		<div class="col-md-4 col-md-offset-4">
-			<div class="panel panel-default">
-				<div class="panel-heading">
-                    <h2>Sync Query</h2>
-                </div>
-				<div class="panel-body">
-					<form action="" method="POST"  class="form-horizontal">
-						<div class="form-group">
-	                        <div class="col-xs-12">
-                                <input 
-                                    type="query" 
-                                    name="query" 
-                                    class="form-control" 
-                                    placeholder="Query" 
-                                    required
-                                >
-	                        </div>
-						</div>
+<div class="page-heading">            
+    <h1>
+		Gmail | {{.User.Email}}</small>
+	</h1>
 
-						<div class="panel-footer">
-							<div class="clearfix">
-								<button type="submit" class="btn btn-primary pull-right">
-                                    Start sync
-                                </button>
-							</div>
-						</div>
+	<form action=""  method="POST" enctype="multipart/form-data" class="form-horizontal">
 
-					</form>
+		<div class="input-group mb-lg col-md-4 pull-right">
+
+			<div class="form-group">
+				<div class="col-xs-12">
+					<label>Credentials</label>
+					<div class="input-group">
+						<span class="input-group-addon">
+							<i class="fa fa-file-code-o"></i>
+						</span>
+						<input 
+							name="credentials" 
+							type="file" 
+							class="form-control" 
+							placeholder="Credentials"
+							required
+						>
+					</div>
 				</div>
 			</div>
 
+			<span class="input-group-btn">
+				<button type="submit" class="btn btn-primary">
+					Save
+				</button>
+			</span>
+		</div>
+
+	</form>
+</div>
+
+<div class="container-fluid">
+                                 
+	<div class="row">
+
+		<div class="col-md-2">
+
+			<form action="" method="POST" class="form-horizontal">
+				<div class="panel">
+
+					<div class="panel-body">
+
+						<div class="form-group">
+
+							<label>New sync</label>
+							<input 
+								type="query" 
+								name="query" 
+								class="form-control" 
+								placeholder="Query" 
+								required
+							>
+						</div>
+						
+					</div>
+
+					<div class="panel-footer">
+						<button type="submit" class="btn btn-primary pull-right">
+							Start
+						</button>
+					</div>
+
+				</div>
+			</form>
+
+		</div>
+		<div class="col-md-10">
+			<div class="panel panel-inbox">
+
+				<div class="panel-body">
+
+					<table class="table table-striped table-hover table-inbox mb0 table-vam">
+
+						<thead>
+							<tr>
+								<td>Query</td>
+								<td>Start</td>
+								<td>End</td>
+								<td>Threads count</td>
+							</tr>
+						</thead>
+						<tbody>
+
+							{{ range $key, $row := .Syncers }}
+
+								<tr>
+									<td>{{ $row.Query }}</td>
+									<td>{{ $row.Start }}</td>
+									<td>{{ $row.End }}</td>
+									<td>{{ $row.ThreadsCount }}</td>
+									
+								</tr>	
+							{{ end }}
+
+						</tbody>
+					</table>
+				</div>
+			</div>
 		</div>
 	</div>
-</div>
+
+</div> <!-- .container-fluid -->
+
 
 {{end}}
 

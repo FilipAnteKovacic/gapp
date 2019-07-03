@@ -25,6 +25,34 @@ type Syncer struct {
 	LastID       string        `json:"lastID" bson:"lastID,omitempty"`
 }
 
+// GetAllSyncers return all syncers by user
+func GetAllSyncers(user User) []Syncer {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetGMailLabels",
+	}
+
+	defer SaveLog(proc)
+
+	var gdata []Syncer
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("syncers")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"owner": user.Email}).Sort("-start").All(&gdata)
+	if err != nil {
+		HandleError(proc, "get syncers", err, true)
+		return gdata
+	}
+
+	return gdata
+
+}
+
 // CRUDSyncer save syncer
 func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
 
@@ -152,8 +180,7 @@ func GetThreads(user User, label, search string, page int) (int, []Thread) {
 			bson.M{"from": bson.M{"$regex": search}},
 			bson.M{"to": bson.M{"$regex": search}},
 		},
-			"owner":  user.Email,
-			"labels": label,
+			"owner": user.Email,
 		}
 
 	}
