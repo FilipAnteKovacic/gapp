@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"html/template"
 	"log"
@@ -11,9 +10,11 @@ import (
 
 	"github.com/globalsign/mgo"
 	emailaddress "github.com/mcnijman/go-emailaddress"
+	"golang.org/x/oauth2"
 	gmail "google.golang.org/api/gmail/v1"
 )
 
+// GetGService refresh token, create client & return service
 func GetGService(user User) *gmail.Service {
 
 	proc := ServiceLog{
@@ -23,26 +24,20 @@ func GetGService(user User) *gmail.Service {
 		Name:    "RefreshToken",
 	}
 
-	/*
-		//Check if token is valid
-		if user.Token.Expiry.Add(time.Hour*time.Duration(2)).Format("2006-01-02 15:04:05") < time.Now().Format("2006-01-02 15:04:05") {
+	if user.Token.Expiry.Add(2*time.Hour).Format("2006-01-02T15:04:05") < time.Now().Format("2006-01-02T15:04:05") {
 
-			tokenSource := user.Config.TokenSource(context.Background(), user.Token)
-			sourceToken := oauth2.ReuseTokenSource(nil, tokenSource)
-			t, _ := sourceToken.Token()
-			client := user.Config.Client(context.Background(), t)
-			svc, err := gmail.New(client)
-			if err != nil {
-				HandleError(proc, "Unable to create Gmail service", err, true)
-				return nil
-			}
+		tokenSource := user.Config.TokenSource(oauth2.NoContext, user.Token)
+		sourceToken := oauth2.ReuseTokenSource(nil, tokenSource)
+		newToken, _ := sourceToken.Token()
 
-			return svc
-
+		if newToken.AccessToken != user.Token.AccessToken {
+			user.Token = newToken
+			UpdateUser(user.ID.Hex(), user)
 		}
-	*/
+	}
+
 	// get client for using Gmail API
-	client := user.Config.Client(context.Background(), user.Token)
+	client := user.Config.Client(oauth2.NoContext, user.Token)
 	svc, err := gmail.New(client)
 	if err != nil {
 		HandleError(proc, "Unable to create Gmail service", err, true)
@@ -53,14 +48,14 @@ func GetGService(user User) *gmail.Service {
 
 }
 
-// BackupGMail use syncer struct to start sync from GMail api
-func BackupGMail(syncer Syncer) {
+// SyncGLabels sync labels from gmail
+func SyncGLabels(syncer Syncer) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
 		Type:    "proccess",
 		Service: "gmailSync",
-		Name:    "BackupGMail",
+		Name:    "SyncGLabels",
 	}
 
 	defer SaveLog(proc)
@@ -68,13 +63,12 @@ func BackupGMail(syncer Syncer) {
 	DBC := MongoSession()
 	defer DBC.Close()
 
-	// init save syncer
-	CRUDSyncer(syncer, DBC)
-
 	user := GetUserByEmail(syncer.Owner)
 	svc := GetGService(user)
 
 	if svc != nil {
+
+		syncer.Count = 0
 
 		req := svc.Users.Labels.List(user.Email)
 
@@ -119,13 +113,43 @@ func BackupGMail(syncer Syncer) {
 					}
 				}
 
+				syncer.Count++
+
 				CRUDLabel(l, DBC)
 
 			}
 
 		}
 
-		syncer.ThreadsCount = 0
+		syncer.End = time.Now()
+
+		CRUDSyncer(syncer, DBC)
+
+	}
+
+}
+
+// SyncGMail use syncer struct to start sync from GMail api
+func SyncGMail(syncer Syncer) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "SyncGMail",
+	}
+
+	defer SaveLog(proc)
+
+	DBC := MongoSession()
+	defer DBC.Close()
+
+	user := GetUserByEmail(syncer.Owner)
+	svc := GetGService(user)
+
+	if svc != nil {
+
+		syncer.Count = 0
 
 		//Gmail API page loop
 		pageToken := ""
@@ -145,8 +169,7 @@ func BackupGMail(syncer Syncer) {
 
 			for _, thread := range r.Threads {
 
-				syncer.ThreadsCount++
-				syncer.LastID = string(thread.Id)
+				syncer.Count++
 
 				wgCostDrv.Add(1)
 				go ProccessGmailThread(user, thread, svc, DBC, &wgCostDrv)
@@ -155,10 +178,17 @@ func BackupGMail(syncer Syncer) {
 
 			wgCostDrv.Wait()
 
+			pageToken = r.NextPageToken
+			syncer.LastPageToken = pageToken
+
+			CRUDSyncer(syncer, DBC)
+
 			if r.NextPageToken == "" {
 				break
 			}
-			pageToken = r.NextPageToken
+
+			svc = GetGService(user)
+
 		}
 
 		syncer.End = time.Now()
