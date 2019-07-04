@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"fmt"
 	"html/template"
@@ -222,6 +221,24 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 		if r.Method == "POST" {
 
+			DBC := MongoSession()
+			defer DBC.Close()
+
+			if r.FormValue("labels") != "" && u.Token != nil {
+
+				s := Syncer{
+					Owner: u.Email,
+					Query: "labels",
+					Start: time.Now(),
+				}
+
+				// init save syncer
+				CRUDSyncer(s, DBC)
+
+				go SyncGLabels(s)
+
+			}
+
 			if r.FormValue("query") != "" && u.Token != nil {
 
 				query := r.FormValue("query")
@@ -232,7 +249,10 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 					Start: time.Now(),
 				}
 
-				go BackupGMail(s)
+				// init save syncer
+				CRUDSyncer(s, DBC)
+
+				go SyncGMail(s)
 
 			}
 
@@ -276,7 +296,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 				UpdateUser(u.ID.Hex(), u)
 
-				authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+				authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 
 				http.Redirect(w, r, authURL, 301)
 
@@ -376,7 +396,7 @@ var TokenController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		code := r.FormValue("code")
 
 		u := GetUser(CookieValid(r))
-		tok, err := u.Config.Exchange(context.TODO(), code)
+		tok, err := u.Config.Exchange(oauth2.NoContext, code)
 		if err != nil {
 			log.Fatalf("Unable to retrieve token from web: %v", err)
 		}
