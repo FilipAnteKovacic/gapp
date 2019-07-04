@@ -427,6 +427,8 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		break
 	case "/logout":
 
+		p = Page{Name: "Logout", View: "logout"}
+
 		RemoveAllSessions(w)
 		AppRedirect(w, r, "/login", 302)
 
