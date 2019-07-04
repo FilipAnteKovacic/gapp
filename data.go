@@ -16,13 +16,13 @@ import (
 
 // Syncer struct for sync queries
 type Syncer struct {
-	ID           bson.ObjectId `json:"id" bson:"_id,omitempty"`
-	Owner        string        `json:"owner" bson:"owner,omitempty"`
-	Query        string        `json:"query" bson:"query,omitempty"`
-	Start        time.Time     `json:"start" bson:"start,omitempty"`
-	End          time.Time     `json:"end" bson:"end,omitempty"`
-	ThreadsCount int           `json:"count" bson:"count,omitempty"`
-	LastID       string        `json:"lastID" bson:"lastID,omitempty"`
+	ID            bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Owner         string        `json:"owner" bson:"owner,omitempty"`
+	Query         string        `json:"query" bson:"query,omitempty"`
+	Start         time.Time     `json:"start" bson:"start,omitempty"`
+	End           time.Time     `json:"end" bson:"end,omitempty"`
+	Count         int           `json:"count" bson:"count,omitempty"`
+	LastPageToken string        `json:"lastPageToken" bson:"lastPageToken,omitempty"`
 }
 
 // GetAllSyncers return all syncers by user
@@ -65,7 +65,7 @@ func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
 
 	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("syncers")
 
-	queryCheck := bson.M{"owner": sync.Owner, "query": sync.Query}
+	queryCheck := bson.M{"owner": sync.Owner, "query": sync.Query, "start": sync.Start}
 
 	actRes := Syncer{}
 	err := mongoC.Find(queryCheck).One(&actRes)
