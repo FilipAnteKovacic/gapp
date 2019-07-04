@@ -51,14 +51,18 @@
 
 		<div class="col-md-2">
 
-			<form action="" method="POST" class="form-horizontal">
-				<div class="panel">
+			<div class="panel">
 
-					<div class="panel-body">
+				<div class="panel-body">
 
+					<form action="" method="POST" class="form-horizontal">
+						<input type="submit" name="labels" value="Sync labels" class="btn btn-danger ">
+					</form>
+					<hr/>
+					<form action="" method="POST" class="form-horizontal">
 						<div class="form-group">
 
-							<label>New sync</label>
+							<label>New email sync query</label>
 							<input 
 								type="query" 
 								name="query" 
@@ -68,11 +72,11 @@
 							>
 						</div>
 						<input type="submit" name="start_sync" value="Start" class="btn btn-primary pull-right">
-					</div>
-
+					</form>
 				</div>
-			</form>
 
+			</div>
+			
 		</div>
 		<div class="col-md-10">
 			<div class="panel panel-inbox">
@@ -82,12 +86,14 @@
 					<table class="table table-striped table-hover table-inbox mb0 table-vam">
 
 						<thead>
+						
 							<tr>
 								<td>Query</td>
 								<td>Start</td>
 								<td>End</td>
-								<td>Threads count</td>
+								<td>Count</td>
 							</tr>
+
 						</thead>
 						<tbody>
 
@@ -97,9 +103,9 @@
 									<td>{{ $row.Query }}</td>
 									<td>{{ $row.Start }}</td>
 									<td>{{ $row.End }}</td>
-									<td>{{ $row.ThreadsCount }}</td>
-									
+									<td>{{ $row.Count }}</td>
 								</tr>	
+
 							{{ end }}
 
 						</tbody>
