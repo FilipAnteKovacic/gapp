@@ -713,9 +713,10 @@ func GetAttachmentGridFS(attach Attachment) *mgo.GridFile {
 
 // GStats email owner quick stats
 type GStats struct {
-	MinDate string
-	MaxDate string
-	Count   int
+	Labels      int
+	Threads     int
+	Messages    int
+	Attachments int
 }
 
 // GetGMailsStats return gmail stats
@@ -730,42 +731,42 @@ func GetGMailsStats(user User) GStats {
 
 	defer SaveLog(proc)
 
+	var err error
 	var stats GStats
 
 	DB := MongoSession()
-	DBC := DB.DB(os.Getenv("MONGO_DB")).C("threads")
 	defer DB.Close()
 
-	msgCount, err := DBC.Find(bson.M{"owner": user.Email}).Count()
+	DBCT := DB.DB(os.Getenv("MONGO_DB")).C("threads")
+
+	stats.Threads, err = DBCT.Find(bson.M{"owner": user.Email}).Count()
 	if err != nil {
-		HandleError(proc, "get snippets", err, true)
+		HandleError(proc, "get threads count", err, false)
 		return stats
 	}
 
-	stats.Count = msgCount
+	DBCM := DB.DB(os.Getenv("MONGO_DB")).C("messages")
 
-	if msgCount != 0 {
+	stats.Messages, err = DBCM.Find(bson.M{"owner": user.Email}).Count()
+	if err != nil {
+		HandleError(proc, "get messages counts", err, false)
+		return stats
+	}
 
-		var lastMsg Thread
+	DBCA := DB.DB(os.Getenv("MONGO_DB")).C("attachments")
 
-		err = DBC.Find(bson.M{"owner": user.Email}).Limit(1).Sort("-internalDate").One(&lastMsg)
-		if err != nil {
-			HandleError(proc, "get snippets", err, true)
-			return stats
-		}
+	stats.Attachments, err = DBCA.Find(bson.M{"owner": user.Email}).Count()
+	if err != nil {
+		HandleError(proc, "get attachments counts", err, false)
+		return stats
+	}
 
-		stats.MaxDate = lastMsg.EmailDate
+	DBCL := DB.DB(os.Getenv("MONGO_DB")).C("labels")
 
-		var firstMsg Thread
-
-		err = DBC.Find(bson.M{"owner": user.Email}).Limit(1).Sort("internalDate").One(&firstMsg)
-		if err != nil {
-			HandleError(proc, "get snippets", err, true)
-			return stats
-		}
-
-		stats.MaxDate = firstMsg.EmailDate
-
+	stats.Labels, err = DBCL.Find(bson.M{"owner": user.Email}).Count()
+	if err != nil {
+		HandleError(proc, "get labels count", err, false)
+		return stats
 	}
 
 	return stats
