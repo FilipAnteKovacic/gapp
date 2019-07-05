@@ -149,7 +149,12 @@
 											{{ $row.From }}
 										</div>
 									</td>
-									<td>{{ $row.MsgCount }}</td>
+									<td>
+										<span class="badge badge-primary">
+											{{ $row.MsgCount }}
+											<i class="fa fa-comments-o"></i>
+										</span>
+									</td>
 									<td class="inbox-msg-snip">
 										<p class="mb0">
 											<strong>{{ $row.Subject }} </strong>
