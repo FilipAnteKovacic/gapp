@@ -304,7 +304,9 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 			}
 
-			mtread = ProcessMessageParts(msg.Id, user, msg.Payload.Parts, svc, DBC, mtread)
+			mtread = ProcessPayload(msg.Id, user, msg.Payload, svc, DBC, mtread)
+
+			t.AttchCount = t.AttchCount + len(mtread.Attachments)
 
 			if t.HistoryID == mtread.HistoryID {
 
@@ -332,8 +334,8 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 }
 
-// ProcessMessageParts proccess trough levels of message part
-func ProcessMessageParts(msgID string, user User, parts []*gmail.MessagePart, svc *gmail.Service, DBC *mgo.Session, mtread ThreadMessage) ThreadMessage {
+// ProcessPayload proccess trough levels of message part
+func ProcessPayload(msgID string, user User, p *gmail.MessagePart, svc *gmail.Service, DBC *mgo.Session, mtread ThreadMessage) ThreadMessage {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -344,80 +346,78 @@ func ProcessMessageParts(msgID string, user User, parts []*gmail.MessagePart, sv
 
 	defer SaveLog(proc)
 
-	if len(parts) != 0 {
+	//base64.StdEncoding.DecodeString(p.Body.Data)
+	//base64.RawURLEncoding.DecodeString(p.Body.Data)
+	switch p.MimeType {
+	case "text/plain":
 
-		for _, p := range parts {
+		mtread.TextRaw = p.Body.Data
 
-			//base64.StdEncoding.DecodeString(p.Body.Data)
-			//base64.RawURLEncoding.DecodeString(p.Body.Data)
-			switch p.MimeType {
-			case "text/plain":
+		decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
+		if err != nil {
+			mtread.Text = mtread.Text + err.Error()
+		} else {
+			mtread.Text = mtread.Text + string(decoded)
+		}
 
-				mtread.TextRaw = p.Body.Data
+		break
+	case "text/html":
 
-				decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
-				if err != nil {
-					mtread.Text = err.Error()
-				} else {
-					mtread.Text = string(decoded)
-				}
+		mtread.HTMLRaw = p.Body.Data
 
-				break
-			case "text/html":
+		decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
+		if err != nil {
+			mtread.HTML = mtread.HTML + template.HTML(err.Error())
+		} else {
+			mtread.HTML = mtread.HTML + template.HTML(string(decoded))
+		}
 
-				mtread.HTMLRaw = p.Body.Data
+		break
 
-				decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
-				if err != nil {
-					mtread.HTML = template.HTML(err.Error())
-				} else {
-					mtread.HTML = template.HTML(string(decoded))
-				}
+	default:
 
-				break
+		if p.Body.AttachmentId != "" {
 
-			default:
+			attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msgID, p.Body.AttachmentId)
 
-				if p.Body.AttachmentId != "" {
-
-					attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msgID, p.Body.AttachmentId)
-
-					attachment, err := attachmentSer.Do()
-					if err != nil {
-						HandleError(proc, "Unable to retrieve attachment", err, true)
-					}
-
-					ah := ParseMessageHeaders(p.Headers)
-
-					a := Attachment{
-						Owner:    user.Email,
-						MsgID:    mtread.MsgID,
-						ThreadID: mtread.ThreadID,
-						AttachID: p.Body.AttachmentId,
-						Filename: p.Filename,
-						Size:     attachment.Size,
-						MimeType: p.MimeType,
-						Headers:  ah,
-						Data:     attachment.Data,
-					}
-
-					am := MessageAttachment{
-						Name:    p.Filename,
-						AttacID: a.AttachID,
-					}
-
-					mtread.Attachments = append(mtread.Attachments, am)
-
-					CRUDAttachment(a, DBC)
-
-				}
-
-				break
+			attachment, err := attachmentSer.Do()
+			if err != nil {
+				HandleError(proc, "Unable to retrieve attachment", err, true)
 			}
 
-			if len(p.Parts) != 0 {
-				mtread = ProcessMessageParts(msgID, user, p.Parts, svc, DBC, mtread)
+			ah := ParseMessageHeaders(p.Headers)
+
+			a := Attachment{
+				Owner:    user.Email,
+				MsgID:    mtread.MsgID,
+				ThreadID: mtread.ThreadID,
+				AttachID: p.Body.AttachmentId,
+				Filename: p.Filename,
+				Size:     attachment.Size,
+				MimeType: p.MimeType,
+				Headers:  ah,
+				Data:     attachment.Data,
 			}
+
+			am := MessageAttachment{
+				Name:    p.Filename,
+				AttacID: a.AttachID,
+			}
+
+			mtread.Attachments = append(mtread.Attachments, am)
+
+			CRUDAttachment(a, DBC)
+
+		}
+
+		break
+	}
+
+	if len(p.Parts) != 0 {
+
+		for _, p := range p.Parts {
+
+			mtread = ProcessPayload(msgID, user, p, svc, DBC, mtread)
 
 		}
 
