@@ -56,58 +56,102 @@
             </div>
 		</div>
 		<div class="col-md-10">
-        
-            <h2>{{.Thread.Subject}}</h2>
 
-            {{ range $key, $row := .Messages }}
+            <div class="panel panel-inbox-read">
 
-                <div class="panel">
-                    <div class="panel-header p10">
+				<div class="panel-body">
+					<div class="inbox-read-heading">
+						<div class="clearfix">
+							<div class="pull-left">
+						        <a 
+                                    href="" 
+                                    onclick="window.history.back();return false;" 
+                                    class="btn btn-default"
+                                >
+                                    <i class="fa fa-fw fa-level-up fa-rotate-270"></i>
+                                </a>
+						    </div>
+						    <div class="pull-right">
+						    	
+						    </div>
+						</div>
+					</div>
 
-                        <h6>From: {{ $row.From }}</h6>
-                        <h6>To:{{ $row.To }}</h6>
-                        <h6>Date: {{ $row.EmailDate }}</h6>
-                    
-                    </div>
+					<div class="clearfix">
+						<h3 class="inbox-read-title pull-left">
+                            {{.Thread.Subject}}
+                        </h3>
+					</div>
 
-                    {{if $row.Attachments}}
+                    {{ range $key, $row := .Messages }}
 
-                        <div class="panel-header p10">
-                        
-                        {{ range $akey, $arow := $row.Attachments }}
+                        <hr class="mb-md">
 
-                            <a href="{{$url}}/attachment/{{ $arow.AttacID }}">{{ $arow.Name }} </a>
-
-                        {{ end }}
-
+                        <div class="inbox-read-details clearfix">
+                            <div class="pull-left">
+                                <span class="inbox-read-sender-name pull-left">{{ $row.From }}</span>
+                            </div>
+                            <div class="pull-right">
+                                <span class="inbox-read-sent-info">
+                                    to <strong>{{ $row.To }}</strong>, 
+                                    on 
+                                    <em>{{ $row.EmailDate }}</em>
+                                </span>
+                            </div>
                         </div>
 
-                    {{end}}
-                    
-                    <div class="panel-body">    
+                        <hr class="mt-md">
 
-                        {{if $row.HTML}}
+                        <div class="msg-body">
+                            
+                            {{if $row.HTML}}
 
-                            {{ $row.HTML }}
+                                {{ $row.HTML }}
 
-                        {{else if $row.Text}}
+                            {{else if $row.Text}}
 
-                            <pre>
-                                {{ $row.Text }}
-                            </pre>
+                                <pre>
+                                    {{ $row.Text }}
+                                </pre>
 
-                        {{else if $row.Snippet}}
+                            {{else if $row.Snippet}}
 
-                            <p>
-                                {{ $row.Snippet }}
-                            </p>
+                                <p>
+                                    {{ $row.Snippet }}
+                                </p>
+
+                            {{end}}
+
+                        </div>
+                        <hr>
+
+                        {{if $row.Attachments}}
+
+                            <p class="mb20">Attachments</p>
+                            <div class="msg-attachments row">
+                            
+                            {{ range $akey, $arow := $row.Attachments }}
+
+
+                                <div class="col-md-3">
+                                    <a href="{{$url}}/attachment/{{ $arow.AttacID }}">
+                                    <div class="well well-sm p10">
+                                        <strong>{{ $arow.Name }}</strong>
+                                    </div>
+                                    </a>
+                                </div>
+
+                            {{ end }}
+
+                            </div>
 
                         {{end}}
-                        
-                    </div>
-                </div>
 
-            {{ end }}
+                    {{ end }}
+
+				</div>
+			</div>
+
 
 		</div>
 	</div>
