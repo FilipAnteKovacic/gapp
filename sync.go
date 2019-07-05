@@ -242,6 +242,8 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 		for _, msg := range thread.Messages {
 
+			internalDate := time.Unix(msg.InternalDate/1000, 0)
+
 			msgo := RawMessage{
 				Owner:           user.Email,
 				MsgID:           msg.Id,
@@ -251,7 +253,7 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 				Snippet:         msg.Snippet,
 				Payload:         msg.Payload,
 				InternalDateRaw: msg.InternalDate,
-				InternalDate:    time.Unix(msg.InternalDate/1000, 0),
+				InternalDate:    internalDate,
 			}
 
 			mtread := ThreadMessage{
@@ -262,7 +264,15 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 				Headers:      ParseMessageHeaders(msg.Payload.Headers),
 				Labels:       msg.LabelIds,
 				Snippet:      msg.Snippet,
-				InternalDate: time.Unix(msg.InternalDate/1000, 0),
+				Date:         internalDate.Format("2006-01-02"),
+				Time:         internalDate.Format("15:04:05"),
+				Year:         internalDate.Format("2006"),
+				Month:        internalDate.Format("01"),
+				Day:          internalDate.Format("02"),
+				Hours:        internalDate.Format("15"),
+				Minutes:      internalDate.Format("04"),
+				Seconds:      internalDate.Format("05"),
+				InternalDate: internalDate,
 			}
 
 			if len(msg.Payload.Headers) != 0 {
@@ -275,12 +285,18 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 						mtread.Subject = h.Value
 
 						break
+
 					case "From":
 
 						mtread.From = h.Value
+
 						emails := emailaddress.Find([]byte(h.Value), false)
-						for _, e := range emails {
-							mtread.FromEmails = append(mtread.FromEmails, strings.ToLower(e.String()))
+						if len(emails) != 0 {
+							var emls []string
+							for _, e := range emails {
+								emls = append(emls, strings.ToLower(e.String()))
+							}
+							mtread.FromEmails = strings.Join(emls, ",")
 						}
 
 						break
@@ -288,16 +304,45 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 						mtread.To = h.Value
 						emails := emailaddress.Find([]byte(h.Value), false)
-						for _, e := range emails {
-							mtread.ToEmails = append(mtread.ToEmails, strings.ToLower(e.String()))
+
+						if len(emails) != 0 {
+							var emls []string
+							for _, e := range emails {
+								emls = append(emls, strings.ToLower(e.String()))
+							}
+							mtread.ToEmails = strings.Join(emls, ",")
 						}
 
 						break
-					case "Date":
 
-						mtread.EmailDate = h.Value
+					case "Cc":
+
+						mtread.CC = h.Value
+
+						emails := emailaddress.Find([]byte(h.Value), false)
+						if len(emails) != 0 {
+							var emls []string
+							for _, e := range emails {
+								emls = append(emls, strings.ToLower(e.String()))
+							}
+							mtread.CCEmails = strings.Join(emls, ",")
+						}
+
+					case "Bcc":
+
+						mtread.BCC = h.Value
+						emails := emailaddress.Find([]byte(h.Value), false)
+
+						if len(emails) != 0 {
+							var emls []string
+							for _, e := range emails {
+								emls = append(emls, strings.ToLower(e.String()))
+							}
+							mtread.BCCEmails = strings.Join(emls, ",")
+						}
 
 						break
+
 					}
 
 				}
@@ -314,10 +359,17 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 				t.Labels = mtread.Labels
 				t.Subject = mtread.Subject
 				t.From = mtread.From
-				t.FromEmails = mtread.FromEmails
 				t.To = mtread.To
-				t.ToEmails = mtread.ToEmails
-				t.EmailDate = mtread.EmailDate
+				t.CC = mtread.CC
+				t.BCC = mtread.BCC
+				t.Date = mtread.Date
+				t.Time = mtread.Time
+				t.Year = mtread.Year
+				t.Month = mtread.Month
+				t.Day = mtread.Day
+				t.Hours = mtread.Hours
+				t.Minutes = mtread.Minutes
+				t.Seconds = mtread.Seconds
 
 			}
 
@@ -351,8 +403,6 @@ func ProcessPayload(msgID string, user User, p *gmail.MessagePart, svc *gmail.Se
 	switch p.MimeType {
 	case "text/plain":
 
-		mtread.TextRaw = p.Body.Data
-
 		decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
 		if err != nil {
 			mtread.Text = mtread.Text + err.Error()
@@ -362,8 +412,6 @@ func ProcessPayload(msgID string, user User, p *gmail.MessagePart, svc *gmail.Se
 
 		break
 	case "text/html":
-
-		mtread.HTMLRaw = p.Body.Data
 
 		decoded, err := base64.URLEncoding.DecodeString(p.Body.Data)
 		if err != nil {

@@ -290,9 +290,14 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 			if r.FormValue("start_sync") != "" && u.Token != nil {
 
+				query := " "
+				if r.FormValue("query") != "" {
+					query = r.FormValue("query")
+				}
+
 				s := Syncer{
 					Owner: u.Email,
-					Query: r.FormValue("query"),
+					Query: query,
 					Start: time.Now(),
 				}
 

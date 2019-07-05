@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -98,11 +99,19 @@ type Thread struct {
 	Owner        string        `json:"owner" bson:"owner,omitempty"`
 	ThreadID     string        `json:"threadID" bson:"threadID,omitempty"`
 	HistoryID    uint64        `json:"historyID" bson:"historyID,omitempty"`
+	Date         string        `json:"date" bson:"date,omitempty"`
+	Year         string        `json:"year" bson:"year,omitempty"`
+	Month        string        `json:"month" bson:"month,omitempty"`
+	Day          string        `json:"day" bson:"day,omitempty"`
+	Time         string        `json:"time" bson:"time,omitempty"`
+	Hours        string        `json:"hours" bson:"hours,omitempty"`
+	Minutes      string        `json:"minutes" bson:"minutes,omitempty"`
+	Seconds      string        `json:"seconds" bson:"seconds,omitempty"`
 	From         string        `json:"from" bson:"from,omitempty"`
-	FromEmails   []string      `json:"fromEmails" bson:"fromEmails,omitempty"`
 	To           string        `json:"to" bson:"to,omitempty"`
-	ToEmails     []string      `json:"toEmails" bson:"toEmails,omitempty"`
-	EmailDate    string        `json:"emailDate" bson:"emailDate,omitempty"`
+	CC           string        `json:"cc" bson:"cc,omitempty"`
+	BCC          string        `json:"bcc" bson:"bcc,omitempty"`
+	BCCEmails    string        `json:"bccEmails" bson:"bccEmails,omitempty"`
 	Subject      string        `json:"subject" bson:"subject,omitempty"`
 	Snippet      string        `json:"snippet" bson:"snippet,omitempty"`
 	MsgCount     int           `json:"msgCount" bson:"msgCount,omitempty"`
@@ -167,6 +176,7 @@ func GetThreads(user User, label, search string, page int) (int, []Thread) {
 
 	DB := MongoSession()
 	DBC := DB.DB(os.Getenv("MONGO_DB")).C("threads")
+	DBM := DB.DB(os.Getenv("MONGO_DB")).C("messages")
 	defer DB.Close()
 
 	// group tredids
@@ -174,29 +184,47 @@ func GetThreads(user User, label, search string, page int) (int, []Thread) {
 
 	if search != "" {
 
+		// Check msgs first & return threadIDs
+
 		query = bson.M{"$or": []bson.M{
-			bson.M{"snippet": bson.M{"$regex": search}},
-			bson.M{"subject": bson.M{"$regex": search}},
 			bson.M{"from": bson.M{"$regex": search}},
 			bson.M{"to": bson.M{"$regex": search}},
+			bson.M{"snippet": bson.M{"$regex": search}},
+			bson.M{"subject": bson.M{"$regex": search}},
+			bson.M{"text": bson.M{"$regex": search}},
+			bson.M{"html": bson.M{"$regex": search}},
 		},
 			"owner": user.Email,
 		}
 
+		mcount, err := DBM.Find(query).Count()
+		if err != nil {
+			HandleError(proc, "get snippets", err, true)
+			return 0, threads
+		}
+
+		fmt.Println(mcount)
+
+		return 0, threads
+
 	}
 
-	gcount, err := DBC.Find(query).Sort("-internalDate").Count()
+	gcount, err := DBC.Find(query).Count()
 	if err != nil {
 		HandleError(proc, "get snippets", err, true)
 		return 0, threads
 	}
 
-	skip := page * 50
+	if gcount != 0 {
 
-	err = DBC.Find(query).Skip(skip).Limit(50).Sort("-internalDate").All(&threads)
-	if err != nil {
-		HandleError(proc, "get snippets", err, true)
-		return 0, threads
+		skip := page * 50
+
+		err = DBC.Find(query).Skip(skip).Limit(50).Sort("-internalDate").All(&threads)
+		if err != nil {
+			HandleError(proc, "get snippets", err, true)
+			return 0, threads
+		}
+
 	}
 
 	return gcount, threads
@@ -239,18 +267,27 @@ type ThreadMessage struct {
 	HistoryID    uint64              `json:"historyID" bson:"historyID,omitempty"`
 	ThreadID     string              `json:"threadID" bson:"threadID,omitempty"`
 	Headers      map[string]string   `json:"headers" bson:"headers,omitempty"`
+	Date         string              `json:"date" bson:"date,omitempty"`
+	Year         string              `json:"year" bson:"year,omitempty"`
+	Month        string              `json:"month" bson:"month,omitempty"`
+	Day          string              `json:"day" bson:"day,omitempty"`
+	Time         string              `json:"time" bson:"time,omitempty"`
+	Hours        string              `json:"hours" bson:"hours,omitempty"`
+	Minutes      string              `json:"minutes" bson:"minutes,omitempty"`
+	Seconds      string              `json:"seconds" bson:"seconds,omitempty"`
 	From         string              `json:"from" bson:"from,omitempty"`
-	FromEmails   []string            `json:"fromEmails" bson:"fromEmails,omitempty"`
+	FromEmails   string              `json:"fromEmails" bson:"fromEmails,omitempty"`
 	To           string              `json:"to" bson:"to,omitempty"`
-	ToEmails     []string            `json:"toEmails" bson:"toEmails,omitempty"`
-	EmailDate    string              `json:"emailDate" bson:"emailDate,omitempty"`
+	ToEmails     string              `json:"toEmails" bson:"toEmails,omitempty"`
+	CC           string              `json:"cc" bson:"cc,omitempty"`
+	CCEmails     string              `json:"ccEmails" bson:"ccEmails,omitempty"`
+	BCC          string              `json:"bcc" bson:"bcc,omitempty"`
+	BCCEmails    string              `json:"bccEmails" bson:"bccEmails,omitempty"`
 	Subject      string              `json:"subject" bson:"subject,omitempty"`
 	Snippet      string              `json:"snippet" bson:"snippet,omitempty"`
 	Labels       []string            `json:"labels" bson:"labels,omitempty"`
 	Text         string              `json:"text" bson:"text,omitempty"`
-	TextRaw      string              `json:"textRaw" bson:"textRaw,omitempty"`
 	HTML         template.HTML       `json:"html" bson:"html,omitempty"`
-	HTMLRaw      string              `json:"htmlRaw" bson:"htmlRaw,omitempty"`
 	Attachments  []MessageAttachment `json:"attachments" bson:"attachments,omitempty"`
 	InternalDate time.Time           `json:"internalDate" bson:"internalDate,omitempty"`
 }

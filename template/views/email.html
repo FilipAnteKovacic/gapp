@@ -4,15 +4,24 @@
 
 {{$url := .URL}}
 
-<div class="page-heading">            
-    <h1>
-		Email
-	</h1>
+<div class="page-heading">     
+       
+    <h1>Email</h1>
 
-	<form action="{{$url}}/emails" method="GET" class="form-horizontal">
+	<form 
+        action="{{$url}}/emails" 
+        method="GET" 
+        class="form-horizontal"
+    >
 
 		<div class="input-group mb-lg col-md-4 pull-right">
-			<input name="search" type="text" value="" class="form-control" placeholder="Search mail...">
+			<input 
+                name="search" 
+                type="text" 
+                value="" 
+                class="form-control" 
+                placeholder="Search mail..."
+            >
 			<span class="input-group-btn">
 				<button type="submit" class="btn btn-primary">
 					<i class="fa fa-fw fa-search"></i>
@@ -34,17 +43,24 @@
 					{{ range $LabelCat, $Labels := .Labels }}
 
 						<span class="inbox-leftbar-category clearfix">
-							<a href="#" class="category-heading" >{{ $LabelCat }}</a>
+							<a href="#" class="category-heading" >
+                                {{ $LabelCat }}
+                            </a>
 						</span>
 
 						{{ range $Labels }}
 
-							<a style="text-align: left;"
+							<a 
+                                style="text-align: left;"
 								href="{{$url}}/emails?label={{ .LabelID }}"
-								class="inbox-menu-item label">
+								class="inbox-menu-item label"
+                            >
 
 								{{ .Name }}
-								<span class="badge"> {{ .ThreadsTotal }} </span>
+
+								<span class="badge"> 
+                                    {{ .ThreadsTotal }} 
+                                </span>
 								
 							</a>
 
@@ -89,13 +105,20 @@
 
                         <div class="inbox-read-details clearfix">
                             <div class="pull-left">
-                                <span class="inbox-read-sender-name pull-left">{{ $row.From }}</span>
+                                <span class="inbox-read-sender-name pull-left">
+                                    {{ $row.From }}
+                                </span>
                             </div>
                             <div class="pull-right">
                                 <span class="inbox-read-sent-info">
+
                                     to <strong>{{ $row.To }}</strong>, 
                                     on 
-                                    <em>{{ $row.EmailDate }}</em>
+                                    <em>
+                                        {{ $row.Hours }}:{{ $row.Minutes }}
+                                        <small>{{ $row.Day }}.{{ $row.Month }}.{{ $row.Year }}</small>
+                                    </em>
+
                                 </span>
                             </div>
                         </div>
@@ -151,7 +174,6 @@
 
 				</div>
 			</div>
-
 
 		</div>
 	</div>
