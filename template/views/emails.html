@@ -74,7 +74,7 @@
 					<div class="pull-left">Attachments</div>
 				</div>
 				<div class="tile-body">
-					<div class="pull-left"><i class="fa fa fa-file-o"></i></div>
+					<div class="pull-left"><i class="fa fa-paperclip"></i></div>
 					<div class="pull-right">{{.Stats.Attachments}}</div>
 				</div>
 			</a>
@@ -82,123 +82,158 @@
 		</div>
 
 		<div class="col-md-2">
-            <div class="inbox-menu">
-                <div class="collapsible-menu" style="border-top: 0;">
 
-					{{ range $LabelCat, $Labels := .Labels }}
+			{{ if not .Labels }}
 
-						<span class="inbox-leftbar-category clearfix">
-							<a href="#" class="category-heading" >{{ $LabelCat }}</a>
-						</span>
+				<h4 class="text-center">Not found labels</h4>
 
-						{{ range $Labels }}
+			{{ end }}
 
-							<a style="text-align: left;"
-								href="{{$url}}/emails?label={{ .LabelID }}"
-								class="inbox-menu-item label">
+			{{ if .Labels }}
 
-								{{ .Name }}  
-								<span class="badge"> {{ .ThreadsTotal }} </span>
-								
-							</a>
+				<div class="inbox-menu">
+					<div class="collapsible-menu" style="border-top: 0;">
+
+						{{ range $LabelCat, $Labels := .Labels }}
+
+							<span class="inbox-leftbar-category clearfix">
+								<a href="#" class="category-heading" >{{ $LabelCat }}</a>
+							</span>
+
+							{{ range $Labels }}
+
+								<a style="text-align: left;"
+									href="{{$url}}/emails?label={{ .LabelID }}"
+									class="inbox-menu-item label">
+
+									{{ .Name }}  
+									<span class="badge"> {{ .ThreadsTotal }} </span>
+									
+								</a>
+
+							{{ end }}
 
 						{{ end }}
 
-					{{ end }}
+					</div>
+				</div>
 
-                </div>
-            </div>
+			{{ end }}
+
 		</div>
 		<div class="col-md-10">
 
-			<div class="panel panel-inbox">
+			{{ if not .Emails }}
 
-				<div class="panel-body">
-					<div class="inbox-mail-heading">
-						<div class="clearfix">
-							
-							<div class="pull-left hidden-xs">
-								{{.LabelName}}
+				<h4 class="text-center">Not found emails</h4>
+
+			{{ end }}
+
+			{{ if .Emails }}
+
+				<div class="panel panel-inbox">
+
+					<div class="panel-body">
+						<div class="inbox-mail-heading">
+							<div class="clearfix">
+								
+								<div class="pull-left hidden-xs">
+									{{.LabelName}}
+								</div>
+
+								<div class="pull-right hidden-xs">
+									<span class="mr10 pull-left" style="margin-top: 9px;">
+										<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}} / {{.Count}} threads</strong>
+									</span>
+									<div class="btn-group pull-right">
+										<a href="?page={{.Paggining.PreviousPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default141">
+											<i class="fa fa-fw fa-angle-left"></i>
+										</a>
+										<a href="?page={{.Paggining.NextPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default">
+											<i class="fa fa-fw fa-angle-right"></i>
+										</a>
+									</div>
+
+								</div>
+
 							</div>
-
-						    <div class="pull-right hidden-xs">
-						    	<span class="mr10 pull-left" style="margin-top: 9px;">
-									<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}} / {{.Count}} threads</strong>
-								</span>
-						    	<div class="btn-group pull-right">
-		                            <a href="?page={{.Paggining.PreviousPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default141">
-										<i class="fa fa-fw fa-angle-left"></i>
-									</a>
-		                            <a href="?page={{.Paggining.NextPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default">
-										<i class="fa fa-fw fa-angle-right"></i>
-									</a>
-		                        </div>
-
-						    </div>
-
 						</div>
-					</div>
-					<table class="table table-striped table-hover table-inbox mb0 table-vam">
-						<tbody>
+						<table class="table table-striped table-hover table-inbox mb0 table-vam">
+							<tbody>
 
-							{{ range $key, $row := .Emails }}
+								{{ range $key, $row := .Emails }}
 
-								<tr onclick="location.href='{{$url}}/email/{{ $row.ThreadID }}';">
-									<td class="inbox-msg-from hidden-xs hidden-sm" width="20%">
-										<div>
-											{{ $row.From }}
-										</div>
-									</td>
-									<td>
-										<span class="badge badge-primary">
-											{{ $row.MsgCount }}
-											<i class="fa fa-comments-o"></i>
-										</span>
-									</td>
-									<td class="inbox-msg-snip">
-										<p class="mb0">
-											<strong>{{ $row.Subject }} </strong>
-										</p>
-										<small>{{ $row.Snippet }}</small>
-									</td>
-									<td class="inbox-msg-time" width="12%">
-										{{ $row.EmailDate }} 
-									</td>
-								</tr>
-								
-							{{ end }}
+									<tr onclick="location.href='{{$url}}/email/{{ $row.ThreadID }}';">
+										<td class="inbox-msg-from hidden-xs hidden-sm" width="20%">
+											<div>
+												{{ $row.From }}
+											</div>
+										</td>
+										<td>
+											<span class="badge badge-primary">
+												{{ $row.MsgCount }}
+												<i class="fa fa-comments-o"></i>
+											</span>
+										</td>
+										<td>
+											{{ if $row.AttchCount  }}
 
-						</tbody>
-					</table>
-					<div class="inbox-mail-footer">
-						<div class="clearfix">
+												<span class="badge badge-danger">
+													{{ $row.AttchCount }}
+													<i class="fa fa-paperclip"></i>
+												</span>
 
-							<div class="pull-left hidden-xs">
-								
+											{{ end }}
+										</td>
+
+										<td class="inbox-msg-snip">
+											<p class="mb0">
+												<strong>{{ $row.Subject }} </strong>
+											</p>
+											<small>{{ $row.Snippet }}</small>
+										</td>
+										<td class="inbox-msg-time" width="12%">
+											{{ $row.EmailDate }} 
+										</td>
+									</tr>
+									
+								{{ end }}
+
+							</tbody>
+						</table>
+						<div class="inbox-mail-footer">
+							<div class="clearfix">
+
+								<div class="pull-left hidden-xs">
+									
+								</div>
+
+								<div class="pull-right hidden-xs">
+									<span class="mr10 pull-left" style="margin-top: 9px;">
+										<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}} / {{.Count}} threads</strong>
+									</span>
+									<div class="btn-group pull-right">
+										<a href="?page={{.Paggining.PreviousPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default141">
+											<i class="fa fa-fw fa-angle-left"></i>
+										</a>
+										<a href="?page={{.Paggining.NextPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default">
+											<i class="fa fa-fw fa-angle-right"></i>
+										</a>
+									</div>
+								</div>
+
 							</div>
-
-						    <div class="pull-right hidden-xs">
-						    	<span class="mr10 pull-left" style="margin-top: 9px;">
-									<strong>{{.Paggining.MinCount}} - {{.Paggining.MaxCount}} / {{.Count}} threads</strong>
-								</span>
-						    	<div class="btn-group pull-right">
-		                            <a href="?page={{.Paggining.PreviousPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default141">
-										<i class="fa fa-fw fa-angle-left"></i>
-									</a>
-		                            <a href="?page={{.Paggining.NextPage}}&label={{.Label}}&search={{.Search}}" class="btn btn-default">
-										<i class="fa fa-fw fa-angle-right"></i>
-									</a>
-		                        </div>
-						    </div>
-
 						</div>
 					</div>
 				</div>
-			</div>
+
+
+			{{end}}
+
+
 		</div>
 	</div>
 
-</div> <!-- .container-fluid -->
-
+</div> 
 
 {{end}}
