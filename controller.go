@@ -129,6 +129,55 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 })
 
+// AttachController get attachment & push to client on download
+var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	redirect := CheckAuth(w, r, false, "/login")
+
+	if !redirect {
+
+		// URL vars
+		vars := mux.Vars(r)
+
+		attachID := vars["attachID"]
+
+		a := GetAttachment(attachID)
+
+		for key, val := range a.Headers {
+			w.Header().Set(key, val)
+		}
+
+		w.Header().Set("Expires", "0")
+		w.Header().Set("Content-Length", strconv.Itoa(int(a.Size)))
+
+		if a.Data == "gridFS" {
+
+			gridFile := GetAttachmentGridFS(a)
+
+			defer gridFile.Close()
+
+			fileHeader := make([]byte, 1024)
+			gridFile.Read(fileHeader)
+
+			gridFile.Seek(0, 0)
+			io.Copy(w, gridFile)
+
+			//http.ServeContent(w, r, attach.Filename, time.Now(), gridFile) // Use proper last mod time
+
+		} else {
+
+			decoded, err := base64.URLEncoding.DecodeString(a.Data)
+			if err != nil {
+				log.Fatalf("Unable to decode attachment: %v", err)
+			}
+			http.ServeContent(w, r, a.Filename, time.Now(), bytes.NewReader(decoded))
+
+		}
+
+	}
+
+})
+
 // MailsController handle other requests
 var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -255,8 +304,24 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				go SyncGMail(s)
 
 			}
+			/*
+				if r.FormValue("password") != "" {
 
-			if r.FormValue("save_cred") != "" {
+					// URL vars
+					pass := r.FormValue("password")
+
+					tok, err := u.Config.PasswordCredentialsToken(oauth2.NoContext, u.Email, pass)
+					if err != nil {
+						log.Fatalf("Unable to retrieve token from web: %v", err)
+					}
+
+					u.Token = tok
+
+					UpdateUser(u.ID.Hex(), u)
+
+				}
+			*/
+			if r.FormValue("cred") != "" {
 
 				// Parse our multipart form, 10 << 20 specifies a maximum
 				// upload of 10 MB files.
@@ -330,55 +395,6 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			log.Println("Error Execute:", err)
 			return
-		}
-
-	}
-
-})
-
-// AttachController get attachment & push to client on download
-var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-	redirect := CheckAuth(w, r, false, "/login")
-
-	if !redirect {
-
-		// URL vars
-		vars := mux.Vars(r)
-
-		attachID := vars["attachID"]
-
-		a := GetAttachment(attachID)
-
-		for key, val := range a.Headers {
-			w.Header().Set(key, val)
-		}
-
-		w.Header().Set("Expires", "0")
-		w.Header().Set("Content-Length", strconv.Itoa(int(a.Size)))
-
-		if a.Data == "gridFS" {
-
-			gridFile := GetAttachmentGridFS(a)
-
-			defer gridFile.Close()
-
-			fileHeader := make([]byte, 1024)
-			gridFile.Read(fileHeader)
-
-			gridFile.Seek(0, 0)
-			io.Copy(w, gridFile)
-
-			//http.ServeContent(w, r, attach.Filename, time.Now(), gridFile) // Use proper last mod time
-
-		} else {
-
-			decoded, err := base64.URLEncoding.DecodeString(a.Data)
-			if err != nil {
-				log.Fatalf("Unable to decode attachment: %v", err)
-			}
-			http.ServeContent(w, r, a.Filename, time.Now(), bytes.NewReader(decoded))
-
 		}
 
 	}

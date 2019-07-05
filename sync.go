@@ -196,7 +196,14 @@ func SyncGMail(syncer Syncer) {
 		CRUDSyncer(syncer, DBC)
 
 	}
+
 }
+
+/*
+if err := svc.Users.Messages.Delete("me", m.gmailID).Do(); err != nil {
+	log.Fatalf("unable to delete message %v: %v", m.gmailID, err)
+}
+*/
 
 // ProccessGmailThread process single thread
 func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DBC *mgo.Session, wgi *sync.WaitGroup) {

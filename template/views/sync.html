@@ -3,44 +3,80 @@
 {{template "header" .}}
 
 <div class="page-heading">            
-    <h1>
-		Gmail | {{.User.Email}}</small>
-	</h1>
+    <h1>Syncers</h1>
+</div>
 
-	{{if not .User.Token}}
+{{if not .User.Token}}
 
-		<form action="" method="POST"  enctype="multipart/form-data" class="form-horizontal">
+<div class="container-fluid">
+								
+	<div class="row">
 
-			<div class="input-group mb-lg col-md-4 pull-right">
+		<div class="col-md-3"></div>
+
+		<div class="col-md-6">
+
+			<form action="" method="POST" enctype="multipart/form-data">
 
 				<div class="form-group">
-					<div class="col-xs-12">
-						<label>Credentials</label>
-						<div class="input-group">
-							<span class="input-group-addon">
-								<i class="fa fa-file-code-o"></i>
-							</span>
+					<label>JSON Credentials</label>
+					<div class="input-group">
+						<span class="input-group-addon">
+							<i class="fa fa-file-code-o"></i>
+						</span>
+						<input 
+							name="credentials" 
+							type="file" 
+							class="form-control" 
+							placeholder="Credentials"
+						>
+						<span class="input-group-addon">
 							<input 
-								name="credentials" 
-								type="file" 
-								class="form-control" 
-								placeholder="Credentials"
-								required
+								type="submit" 
+								name="cred" 
+								value="Save" 
+								class="btn btn-primary pull-right"
 							>
-						</div>
+						</span>
 					</div>
 				</div>
 
-				<span class="input-group-btn">
-					<input type="submit" name="save_cred" value="Save" class="btn btn-primary">
-				</span>
-			</div>
+			</form>
 
-		</form>
+			<!--<h5>OR</h5>
 
-	{{end}}
+			<form action="" method="POST">
+			
+				<div class="form-group">
+					<label>User password</label>
+					<div class="input-group">
+						<input 
+							name="password" 
+							type="password" 
+							class="form-control" 
+							placeholder="Password"
+						>
+						<span class="input-group-addon">
+							<input 
+								type="submit" 
+								name="cred" 
+								value="Save" 
+								class="btn btn-primary pull-right"
+							>
+						</span>
+					</div>
+				</div>
+
+			</form>-->
+
+		</div>
+
+		<div class="col-md-3"></div>
+	</div>
 
 </div>
+
+{{end}}
 
 
 {{if .User.Token}}
