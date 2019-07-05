@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -203,7 +202,58 @@ func GetThreads(user User, label, search string, page int) (int, []Thread) {
 			return 0, threads
 		}
 
-		fmt.Println(mcount)
+		if mcount != 0 {
+
+			var tIDs []string
+			var mthreads []ThreadMessage
+
+			err = DBC.Find(query).Select(bson.M{"threadID": 1}).All(&mthreads)
+			if err != nil {
+				HandleError(proc, "get snippets", err, true)
+				return 0, threads
+			}
+
+			if len(mthreads) != 0 {
+
+				for _, m := range mthreads {
+
+					tIDs = append(tIDs, m.ThreadID)
+
+				}
+
+			}
+
+			if len(tIDs) != 0 {
+
+				query = bson.M{
+					"threadID": bson.M{"$in": tIDs},
+					"owner":    user.Email,
+				}
+
+				gcount, err := DBC.Find(query).Count()
+				if err != nil {
+					HandleError(proc, "get snippets", err, true)
+					return 0, threads
+				}
+
+				if gcount != 0 {
+
+					skip := page * 50
+
+					err = DBC.Find(query).Skip(skip).Limit(50).Sort("-internalDate").All(&threads)
+					if err != nil {
+						HandleError(proc, "get snippets", err, true)
+						return 0, threads
+					}
+
+					return gcount, threads
+
+				}
+
+				return gcount, threads
+			}
+
+		}
 
 		return 0, threads
 
