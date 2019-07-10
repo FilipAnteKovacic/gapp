@@ -36,6 +36,8 @@ func StartApp() {
 
 	muxRouter.Handle("/syncers/", SyncController).Methods("GET", "POST")
 
+	muxRouter.Handle("/contacts/", ContactsController).Methods("GET", "POST")
+
 	muxRouter.Handle("/emails", MailsController).Methods("GET", "POST")
 	muxRouter.Handle("/email/{treadID}", MailController).Methods("GET")
 	muxRouter.Handle("/attachment/{attachID}", AttachController).Methods("GET")

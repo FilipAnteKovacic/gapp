@@ -41,6 +41,17 @@ type SyncPage struct {
 	Syncers []Syncer
 }
 
+//ContactsPage struct for contacts list
+type ContactsPage struct {
+	URL      string
+	Logo     string
+	Name     string
+	View     string
+	N        Notifications
+	User     User
+	Contacts []Contact
+}
+
 //EsPage struct for email pages
 type EsPage struct {
 	URL       string
@@ -260,6 +271,45 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 })
 
+// ContactsController handle token requests
+var ContactsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	redirect := CheckAuth(w, r, false, "/login")
+
+	if !redirect {
+
+		u := GetUser(CookieValid(r))
+
+		p := ContactsPage{
+			Name:     "Contacts",
+			View:     "contacts",
+			URL:      os.Getenv("URL"),
+			User:     u,
+			Contacts: GetAllContacts(u),
+		}
+
+		parsedTemplate, err := template.ParseFiles(
+			"template/index.html",
+			"template/header.html",
+			"template/views/"+p.View+".html",
+		)
+
+		if err != nil {
+			log.Println("Error ParseFiles: "+p.View, err)
+			return
+		}
+
+		err = parsedTemplate.Execute(w, p)
+
+		if err != nil {
+			log.Println("Error Execute:", err)
+			return
+		}
+
+	}
+
+})
+
 // SyncController handle token requests
 var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -289,11 +339,11 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 			}
 
-			if r.FormValue("people") != "" && u.Token != nil {
+			if r.FormValue("contacts") != "" && u.Token != nil {
 
 				s := Syncer{
 					Owner: u.Email,
-					Query: "people",
+					Query: "contacts",
 					Start: time.Now(),
 				}
 
@@ -304,7 +354,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 			}
 
-			if r.FormValue("start_sync") != "" && u.Token != nil {
+			if r.FormValue("gmail") != "" && u.Token != nil {
 
 				query := " "
 				if r.FormValue("query") != "" {

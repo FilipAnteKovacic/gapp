@@ -92,8 +92,8 @@ func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
 
 }
 
-// Person define simlify person struct from gmail
-type Person struct {
+// Contact define simlify person struct from gmail
+type Contact struct {
 	ID        bson.ObjectId `json:"id" bson:"_id,omitempty"`
 	GID       string        `json:"gid" bson:"gid,omitempty"`
 	Owner     string        `json:"owner" bson:"owner,omitempty"`
@@ -105,8 +105,36 @@ type Person struct {
 	Phone     string        `json:"phone" bson:"phone,omitempty"`
 }
 
-// CRUDPeople save syncer
-func CRUDPeople(p Person, DBC *mgo.Session) {
+// GetAllContacts return all contacts by user
+func GetAllContacts(user User) []Contact {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetAllContacts",
+	}
+
+	defer SaveLog(proc)
+
+	var gdata []Contact
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("contacts")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"owner": user.Email}).Sort("-start").All(&gdata)
+	if err != nil {
+		HandleError(proc, "get syncers", err, true)
+		return gdata
+	}
+
+	return gdata
+
+}
+
+// CRUDContact save syncer
+func CRUDContact(p Contact, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -115,7 +143,7 @@ func CRUDPeople(p Person, DBC *mgo.Session) {
 		Name:    "CRUDSyncer",
 	}
 
-	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("people")
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("contacts")
 
 	queryCheck := bson.M{"owner": p.Owner, "gid": p.GID}
 

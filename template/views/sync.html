@@ -91,18 +91,20 @@
 
 				<div class="panel-body">
 
+
+					<form action="" method="POST" class="form-horizontal">
+						<input type="submit" name="contacts" value="Sync contacts" class="btn btn-primary ">
+					</form>
+					<hr/>
+
 					<form action="" method="POST" class="form-horizontal">
 						<input type="submit" name="labels" value="Sync labels" class="btn btn-danger ">
 					</form>
 					<hr/>
 					<form action="" method="POST" class="form-horizontal">
-						<input type="submit" name="people" value="Sync people" class="btn btn-primary ">
-					</form>
-					<hr/>
-					<form action="" method="POST" class="form-horizontal">
 						<div class="form-group">
 
-							<label>New email sync query</label>
+							<label>New gmail sync query</label>
 							<input 
 								type="query" 
 								name="query" 
@@ -110,7 +112,7 @@
 								placeholder="Query" 
 							>
 						</div>
-						<input type="submit" name="start_sync" value="Start" class="btn btn-primary pull-right">
+						<input type="submit" name="gmail" value="Start" class="btn btn-primary pull-right">
 					</form>
 				</div>
 
@@ -127,10 +129,10 @@
 						<thead>
 						
 							<tr>
-								<td>Query</td>
-								<td>Start</td>
-								<td>End</td>
-								<td>Count</td>
+								<th>Query</th>
+								<th>Start</th>
+								<th>End</th>
+								<th>Count</th>
 							</tr>
 
 						</thead>

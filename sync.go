@@ -125,7 +125,7 @@ func SyncGPeople(syncer Syncer) {
 
 			for _, person := range r.Connections {
 
-				p := Person{
+				p := Contact{
 					GID:   person.ResourceName,
 					Owner: user.Email,
 				}
@@ -148,7 +148,7 @@ func SyncGPeople(syncer Syncer) {
 					p.Phone = person.PhoneNumbers[0].CanonicalForm
 				}
 
-				CRUDPeople(p, DBC)
+				CRUDContact(p, DBC)
 
 			}
 

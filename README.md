@@ -35,7 +35,3 @@ BUILDING CONTINER
     docker pull registry.gitlab.com/tmcsolutions/gapp:v1
 
 
-- syncers
-
-
-
