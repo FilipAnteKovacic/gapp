@@ -17,6 +17,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gmail "google.golang.org/api/gmail/v1"
+	people "google.golang.org/api/people/v1"
 )
 
 //Page struct for pages
@@ -288,6 +289,21 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 			}
 
+			if r.FormValue("people") != "" && u.Token != nil {
+
+				s := Syncer{
+					Owner: u.Email,
+					Query: "people",
+					Start: time.Now(),
+				}
+
+				// init save syncer
+				CRUDSyncer(s, DBC)
+
+				go SyncGPeople(s)
+
+			}
+
 			if r.FormValue("start_sync") != "" && u.Token != nil {
 
 				query := " "
@@ -351,8 +367,23 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 					fmt.Println(err)
 				}
 
+				//https://godoc.org/golang.org/x/oauth2/jwt#Config
+				//JWTConfigFromJSON
+				// need to try
+				/*
+					sourceToken, err := google.JWTAccessTokenSourceFromJSON(fileBytes, gmail.MailGoogleComScope)
+					if err != nil {
+						log.Fatal("jwt to conf | ", err)
+					}
+					st, _ := sourceToken.Token()
+
+					u.Token = st
+
+					UpdateUser(u.ID.Hex(), u)
+				*/
+
 				// If modifying these scopes, delete your previously saved token.json.
-				config, err := google.ConfigFromJSON(fileBytes, gmail.GmailReadonlyScope)
+				config, err := google.ConfigFromJSON(fileBytes, gmail.MailGoogleComScope, people.ContactsScope)
 				if err != nil {
 					log.Fatalf("Unable to parse client secret file to config: %v", err)
 				}

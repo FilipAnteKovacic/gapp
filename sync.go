@@ -12,10 +12,11 @@ import (
 	emailaddress "github.com/mcnijman/go-emailaddress"
 	"golang.org/x/oauth2"
 	gmail "google.golang.org/api/gmail/v1"
+	people "google.golang.org/api/people/v1"
 )
 
-// GetGService refresh token, create client & return service
-func GetGService(user User) *gmail.Service {
+// GetGmailService refresh token, create client & return service
+func GetGmailService(user User) *gmail.Service {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -48,6 +49,128 @@ func GetGService(user User) *gmail.Service {
 
 }
 
+// GetPeopleService refresh token, create client & return service
+func GetPeopleService(user User) *people.Service {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "RefreshToken",
+	}
+
+	if user.Token.Expiry.Add(2*time.Hour).Format("2006-01-02T15:04:05") < time.Now().Format("2006-01-02T15:04:05") {
+
+		tokenSource := user.Config.TokenSource(oauth2.NoContext, user.Token)
+		sourceToken := oauth2.ReuseTokenSource(nil, tokenSource)
+		newToken, _ := sourceToken.Token()
+
+		if newToken.AccessToken != user.Token.AccessToken {
+			user.Token = newToken
+			UpdateUser(user.ID.Hex(), user)
+		}
+	}
+
+	// get client for using Gmail API
+	client := user.Config.Client(oauth2.NoContext, user.Token)
+	svc, err := people.New(client)
+	if err != nil {
+		HandleError(proc, "Unable to create Gmail service", err, true)
+		return nil
+	}
+
+	return svc
+
+}
+
+// SyncGPeople sync people from gmail
+func SyncGPeople(syncer Syncer) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "SyncGLabels",
+	}
+
+	defer SaveLog(proc)
+
+	DBC := MongoSession()
+
+	defer DBC.Close()
+
+	user := GetUserByEmail(syncer.Owner)
+	svc := GetPeopleService(user)
+
+	if svc != nil {
+
+		syncer.Count = 0
+
+		personFields := "emailAddresses,names,phoneNumbers,organizations"
+
+		//Gmail API page loop
+		pageToken := ""
+		for {
+
+			//req := svc.People.Connections.List("people/me").PersonFields("emailAddresses,names,phoneNumbers")
+			req := svc.People.Connections.List("people/me").PersonFields(personFields)
+			if pageToken != "" {
+				req.PageToken(pageToken)
+			}
+			r, err := req.Do()
+			if err != nil {
+				HandleError(proc, "Unable to retrieve threads", err, true)
+				return
+			}
+
+			for _, person := range r.Connections {
+
+				p := Person{
+					GID:   person.ResourceName,
+					Owner: user.Email,
+				}
+
+				if len(person.Names) != 0 {
+					p.FirstName = person.Names[0].GivenName
+					p.LastName = person.Names[0].FamilyName
+				}
+
+				if len(person.Organizations) != 0 {
+					p.Company = person.Organizations[0].Name
+					p.Title = person.Organizations[0].Title
+				}
+
+				if len(person.EmailAddresses) != 0 {
+					p.Email = person.EmailAddresses[0].Value
+				}
+
+				if len(person.PhoneNumbers) != 0 {
+					p.Phone = person.PhoneNumbers[0].CanonicalForm
+				}
+
+				CRUDPeople(p, DBC)
+
+			}
+
+			pageToken = r.NextPageToken
+			syncer.LastPageToken = pageToken
+
+			CRUDSyncer(syncer, DBC)
+
+			if r.NextPageToken == "" {
+				break
+			}
+
+		}
+
+	}
+
+	syncer.End = time.Now()
+
+	CRUDSyncer(syncer, DBC)
+
+}
+
 // SyncGLabels sync labels from gmail
 func SyncGLabels(syncer Syncer) {
 
@@ -64,7 +187,7 @@ func SyncGLabels(syncer Syncer) {
 	defer DBC.Close()
 
 	user := GetUserByEmail(syncer.Owner)
-	svc := GetGService(user)
+	svc := GetGmailService(user)
 
 	if svc != nil {
 
@@ -145,7 +268,7 @@ func SyncGMail(syncer Syncer) {
 	defer DBC.Close()
 
 	user := GetUserByEmail(syncer.Owner)
-	svc := GetGService(user)
+	svc := GetGmailService(user)
 
 	if svc != nil {
 
@@ -187,7 +310,7 @@ func SyncGMail(syncer Syncer) {
 				break
 			}
 
-			svc = GetGService(user)
+			svc = GetGmailService(user)
 
 		}
 

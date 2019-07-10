@@ -92,6 +92,58 @@ func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
 
 }
 
+// Person define simlify person struct from gmail
+type Person struct {
+	ID        bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	GID       string        `json:"gid" bson:"gid,omitempty"`
+	Owner     string        `json:"owner" bson:"owner,omitempty"`
+	FirstName string        `json:"firstName" bson:"firstName,omitempty"`
+	LastName  string        `json:"lastName" bson:"lastName,omitempty"`
+	Company   string        `json:"company" bson:"company,omitempty"`
+	Title     string        `json:"title" bson:"title,omitempty"`
+	Email     string        `json:"email" bson:"email,omitempty"`
+	Phone     string        `json:"phone" bson:"phone,omitempty"`
+}
+
+// CRUDPeople save syncer
+func CRUDPeople(p Person, DBC *mgo.Session) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "proccess",
+		Service: "gmailSync",
+		Name:    "CRUDSyncer",
+	}
+
+	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("people")
+
+	queryCheck := bson.M{"owner": p.Owner, "gid": p.GID}
+
+	actRes := Syncer{}
+	err := mongoC.Find(queryCheck).One(&actRes)
+
+	if err != nil {
+
+		err = mongoC.Insert(p)
+		if err != nil {
+			HandleError(proc, "error while inserting row", err, true)
+			return
+		}
+
+		return
+
+	}
+
+	change := bson.M{"$set": p}
+	err = mongoC.Update(queryCheck, change)
+	if err != nil {
+		HandleError(proc, "error while updateing row", err, true)
+		return
+	}
+	return
+
+}
+
 // Thread struct for threads from email
 type Thread struct {
 	ID           bson.ObjectId `json:"id" bson:"_id,omitempty"`
