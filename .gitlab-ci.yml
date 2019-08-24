@@ -1,0 +1,18 @@
+image: docker:latest
+services:
+- docker:dind
+
+stages:
+- build
+
+variables:
+  RELEASE_IMAGE: registry.gitlab.com/tmcsolutions/gapp:v1
+
+before_script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN registry.gitlab.com
+
+build:
+  stage: build
+  script:
+    - docker build --pull -t $RELEASE_IMAGE .
+    - docker push $RELEASE_IMAGE
