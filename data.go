@@ -238,8 +238,17 @@ func CRUDThread(thread Thread, DBC *mgo.Session) {
 
 }
 
+//ESearch query builder for treads
+type ESearch struct {
+	Query   string `json:"query" bson:"query,omitempty"`
+	From    string `json:"from" bson:"from,omitempty"`
+	To      string `json:"to" bson:"to,omitempty"`
+	Subject string `json:"subject" bson:"subject,omitempty"`
+	Text    string `json:"text" bson:"text,omitempty"`
+}
+
 // GetThreads return emails from db by user
-func GetThreads(user User, label, search string, page int) (int, []Thread) {
+func GetThreads(user User, label string, page int, s ESearch) (int, []Thread) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -261,19 +270,51 @@ func GetThreads(user User, label, search string, page int) (int, []Thread) {
 	// group tredids
 	query := bson.M{"owner": user.Email, "labels": label}
 
-	if search != "" {
+	if s.Query != "" || (s.From != "" ||
+		s.To != "" ||
+		s.Subject != "" ||
+		s.Text != "") {
 
 		// Check msgs first & return threadIDs
 
-		query = bson.M{"$or": []bson.M{
-			bson.M{"from": bson.M{"$regex": search}},
-			bson.M{"to": bson.M{"$regex": search}},
-			bson.M{"snippet": bson.M{"$regex": search}},
-			bson.M{"subject": bson.M{"$regex": search}},
-			bson.M{"text": bson.M{"$regex": search}},
-			bson.M{"html": bson.M{"$regex": search}},
-		},
-			"owner": user.Email,
+		query = bson.M{}
+
+		if s.Query != "" {
+
+			query = bson.M{"$or": []bson.M{
+				bson.M{"from": bson.M{"$regex": s.Query}},
+				bson.M{"to": bson.M{"$regex": s.Query}},
+				bson.M{"snippet": bson.M{"$regex": s.Query}},
+				bson.M{"subject": bson.M{"$regex": s.Query}},
+				bson.M{"text": bson.M{"$regex": s.Query}},
+				bson.M{"html": bson.M{"$regex": s.Query}},
+			},
+				"owner": user.Email,
+			}
+
+		} else {
+
+			subQuery := []bson.M{}
+
+			if s.From != "" {
+				subQuery = append(subQuery, bson.M{"from": bson.M{"$regex": s.From}})
+			}
+			if s.To != "" {
+				subQuery = append(subQuery, bson.M{"to": bson.M{"$regex": s.To}})
+			}
+
+			if s.Subject != "" {
+				subQuery = append(subQuery, bson.M{"subject": bson.M{"$regex": s.Subject}})
+			}
+
+			if s.Text != "" {
+				subQuery = append(subQuery, bson.M{"snippet": bson.M{"$regex": s.Text}})
+				subQuery = append(subQuery, bson.M{"text": bson.M{"$regex": s.Text}})
+				subQuery = append(subQuery, bson.M{"html": bson.M{"$regex": s.Text}})
+			}
+
+			query = bson.M{"$or": subQuery, "owner": user.Email}
+
 		}
 
 		mcount, err := DBM.Find(query).Count()

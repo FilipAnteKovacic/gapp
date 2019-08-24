@@ -65,7 +65,7 @@ type EsPage struct {
 	Paggining GPagging
 	Label     string
 	LabelName string
-	Search    string
+	Search    ESearch
 	Labels    map[string][]Label
 	Emails    []Thread
 }
@@ -202,13 +202,19 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		firstLabel, labelsList := GetLabelsList(user)
 		labelsByType := GetLabelsByType(user)
 
-		search := r.FormValue("search")
+		s := ESearch{
+			Query:   r.FormValue("search[query]"),
+			From:    r.FormValue("search[from]"),
+			To:      r.FormValue("search[to]"),
+			Subject: r.FormValue("search[subject]"),
+			Text:    r.FormValue("search[text]"),
+		}
 
 		label := ""
 		label = r.FormValue("label")
 		if label == "" {
 
-			if firstLabel != "" && search == "" {
+			if firstLabel != "" && s.Query == "" {
 				label = firstLabel
 			}
 
@@ -229,14 +235,14 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			PreviousPage: (pg - 1),
 		}
 
-		gcount, emails := GetThreads(user, label, search, pg)
+		gcount, emails := GetThreads(user, label, pg, s)
 
 		p := EsPage{
 			Name:      "Emails",
 			View:      "emails",
 			URL:       os.Getenv("URL"),
 			User:      user,
-			Search:    search,
+			Search:    s,
 			Label:     label,
 			Labels:    labelsByType,
 			Emails:    emails,
@@ -420,6 +426,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				//https://godoc.org/golang.org/x/oauth2/jwt#Config
 				//JWTConfigFromJSON
 				// need to try
+				//axt.labels.set
 				/*
 					sourceToken, err := google.JWTAccessTokenSourceFromJSON(fileBytes, gmail.MailGoogleComScope)
 					if err != nil {
@@ -428,6 +435,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 					st, _ := sourceToken.Token()
 
 					u.Token = st
+					u.Credentials = fileBytes
 
 					UpdateUser(u.ID.Hex(), u)
 				*/

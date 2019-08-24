@@ -27,9 +27,6 @@ func MongoSession() *mgo.Session {
 			HandleError(proc, "Failed to start the Mongo session", err, true)
 		}
 
-		mgoSession.SetSocketTimeout(1 * time.Hour)
-		mgoSession.SetMode(mgo.Monotonic, true)
-
 	}
 	return mgoSession.Clone()
 }
