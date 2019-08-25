@@ -1,12 +1,38 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
+
+var mgoSession *mgo.Session
+
+// MongoSession generate mongo session
+func MongoSession() *mgo.Session {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Count:   0,
+		Type:    "function",
+		Service: "loocpi_rates",
+		Name:    "mongoSession",
+	}
+
+	if mgoSession == nil {
+		var err error
+		mgoSession, err = mgo.Dial(os.Getenv("MONGO_CONN"))
+		if err != nil {
+			HandleError(proc, "Failed to start the Mongo session", err, true)
+		}
+
+	}
+	return mgoSession.Clone()
+}
 
 //ServiceLog log structure
 type ServiceLog struct {
@@ -72,4 +98,36 @@ func SaveLog(log ServiceLog) {
 
 	return
 
+}
+
+// HandleError handle error depends on ENV
+func HandleError(proc ServiceLog, status string, err error, save bool) {
+
+	if os.Getenv("DEBUG") == "true" {
+
+		fmt.Println("------------")
+		fmt.Println("----ERROR---")
+		fmt.Println("------------")
+
+		fmt.Println(proc)
+		fmt.Println("------------")
+		fmt.Println(status)
+		fmt.Println("------------")
+		fmt.Println(err)
+		fmt.Println("------------")
+
+	}
+
+	if os.Getenv("PRINT_ERROR") == "true" {
+		fmt.Println(status, err)
+	}
+
+	if save {
+
+		proc.Status = "error"
+		proc.Msg = status + ":" + err.Error()
+		go SaveLog(proc)
+	}
+
+	return
 }
