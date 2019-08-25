@@ -1,4 +1,4 @@
-Register to backup
+Gbackup
 
 ENV
 - MONGO_CONN    - string for mongo connection
@@ -56,3 +56,5 @@ BUILDING CONTINER
 
 - attachments view
 - attachments search
+
+- group emails table by date, sender

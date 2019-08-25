@@ -1,0 +1,11 @@
+.table td, .table th {
+    padding: 2px;
+    vertical-align: middle;
+    border-top: 1px solid #dee2e6;
+}
+
+.table thead th{
+    padding: 2px;
+    vertical-align: middle;
+    border-top: 1px solid #dee2e6;
+}

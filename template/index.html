@@ -2,83 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Gmail backup</title>
+    <title>Gbackup</title>
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-touch-fullscreen" content="yes">
 
     <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700' rel='stylesheet' type='text/css'>
-    <link type="text/css" href="{{.URL}}/static/plugins/iCheck/skins/minimal/blue.css" rel="stylesheet">
-    <link type="text/css" href="{{.URL}}/static/fonts/font-awesome/css/font-awesome.min.css" rel="stylesheet">
-    <link type="text/css" href="{{.URL}}/static/css/styles.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.10.2/css/all.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.10.2/css/v4-shims.css">
+    <link rel="stylesheet" href="{{.URL}}/static/css/style.css">
 
-    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries. Placeholdr.js enables the placeholder attribute -->
-    <!--[if lt IE 9]>
-        <link type="text/css" href="assets/css/ie8.css" rel="stylesheet">
-        <script type="text/javascript" src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-
-    <!-- The following CSS are included as plugins and can be removed if unused-->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     
-    </head>
+</head>
 
-    <body class="focused-form">
+<body>
 
-        {{ if .N.HaveNotfications }}
+    {{ if .N.HaveNotfications }}
 
-            <div class="col-sm-12">
+        <div class="col-sm-12">
 
-                {{ range $key, $row := .N.Notifications }}
+            {{ range $key, $row := .N.Notifications }}
 
-                    <div class="alert  alert-{{ $row.Type }} alert-dismissible fade show" role="alert">
-                        <span class="badge badge-pill badge-{{ $row.Type }}">
-                            {{ $row.Title }}
-                        </span> 
-                        {{ $row.Text }}
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">×</span>
-                        </button>
-                    </div>
+                <div class="alert  alert-{{ $row.Type }} alert-dismissible fade show" role="alert">
+                    <span class="badge badge-pill badge-{{ $row.Type }}">
+                        {{ $row.Title }}
+                    </span> 
+                    {{ $row.Text }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
 
-                {{ end }}
+            {{ end }}
 
-            </div>
+        </div>
 
-        {{ end }}
+    {{ end }}
 
 
-        {{template "content" .}}
+    {{template "content" .}}
 
-    <!-- Load site level scripts -->
-
-    <!-- <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script> -->
-
-    <script type="text/javascript" src="{{.URL}}/static/js/jquery-1.10.2.min.js"></script> 							<!-- Load jQuery -->
-    <script type="text/javascript" src="{{.URL}}/static/js/jqueryui-1.9.2.min.js"></script> 							<!-- Load jQueryUI -->
-
-    <script type="text/javascript" src="{{.URL}}/static/js/bootstrap.min.js"></script> 								<!-- Load Bootstrap -->
-
-    <script type="text/javascript" src="{{.URL}}/static/plugins/jstree/dist/jstree.min.js"></script>  				<!-- jsTree -->
-
-    <script type="text/javascript" src="{{.URL}}/static/plugins/codeprettifier/prettify.js"></script> 				<!-- Code Prettifier  -->
-    <script type="text/javascript" src="{{.URL}}/static/plugins/bootstrap-switch/bootstrap-switch.js"></script> 		<!-- Swith/Toggle Button -->
-
-    <script type="text/javascript" src="{{.URL}}/static/plugins/bootstrap-tabdrop/js/bootstrap-tabdrop.js"></script>  <!-- Bootstrap Tabdrop -->
-
-    <script type="text/javascript" src="{{.URL}}/static/plugins/iCheck/icheck.min.js"></script>     					<!-- iCheck -->
-
-    <script type="text/javascript" src="{{.URL}}/static/js/enquire.min.js"></script> 									<!-- Enquire for Responsiveness -->
-
-    <script type="text/javascript" src="{{.URL}}/static/plugins/bootbox/bootbox.js"></script>							<!-- Bootbox -->
-
-    <script type="text/javascript" src="{{.URL}}/static/plugins/nanoScroller/js/jquery.nanoscroller.min.js"></script> <!-- nano scroller -->
-
-    <script type="text/javascript" src="{{.URL}}/static/plugins/jquery-mousewheel/jquery.mousewheel.min.js"></script> 	<!-- Mousewheel support needed for jScrollPane -->
-
-    <script type="text/javascript" src="{{.URL}}/static/js/application.js"></script>
-
-    </body>
+</body>
 </html>
 

@@ -4,176 +4,189 @@
 
 {{$url := .URL}}
 
-<div class="page-heading">     
-       
-    <h1>Email</h1>
+<div class="d-flex flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 border-bottom">
+	<div class="col-md-6">
+		<h6 class="p-1">
+			<span class="p-2">Emails</span>
 
-	<form 
-        action="{{$url}}/emails" 
-        method="GET" 
-        class="form-horizontal"
-    >
+			<small>
+				Labels
+				<span class="badge badge-pill bg-light align-text-bottom">
+					{{.Stats.Labels}}
+				</span> 
+			</small>
+			<small>
+				Threads
+				<span class="badge badge-pill bg-light align-text-bottom">
+					{{.Stats.Threads}}
+				</span> 
+			</small>
 
-		<div class="input-group mb-lg col-md-4 pull-right">
-			<input 
-                name="search" 
-                type="text" 
-                value="" 
-                class="form-control" 
-                placeholder="Search mail..."
-            >
-			<span class="input-group-btn">
-				<button type="submit" class="btn btn-primary">
-					<i class="fa fa-fw fa-search"></i>
-				</button>
-			</span>
-		</div>
+			<small>
+				Messages
+				<span class="badge badge-pill bg-light align-text-bottom">
+					{{.Stats.Messages}}
+				</span> 
+			</small>
+			<small>
+				Attachments
+				<span class="badge badge-pill bg-light align-text-bottom">
+					{{.Stats.Attachments}}
+				</span> 
+			</small>
+			
+		</h6>
 
-	</form>
+	</div>
+
+	<div class="col-md-6">
+
+	</div>
+
 </div>
 
 <div class="container-fluid">
                                  
 	<div class="row">
-		<div class="col-md-2">
-        
-            <div class="inbox-menu">
-                <div class="collapsible-menu" style="border-top: 0;">
+
+		<nav class="col-md-2 d-none d-md-block bg-light sidebar">
+			<div class="sidebar-sticky">
+
+				{{ if not .Labels }}
+
+					<ul class="nav flex-column">
+						<li class="nav-item">
+							<a class="nav-link" href="#">
+							Not found labels 
+							</a>
+						</li>
+					</ul>
+
+				{{ end }}
+
+				{{ if .Labels }}
 
 					{{ range $LabelCat, $Labels := .Labels }}
 
-						<span class="inbox-leftbar-category clearfix">
-							<a href="#" class="category-heading" >
-                                {{ $LabelCat }}
-                            </a>
-						</span>
+						<h4 class="border-bottom pt-2 pb-2">
+							<span>{{ $LabelCat }}</span>
+						</h4>
+						<ul class="nav flex-column mb-2">
 
-						{{ range $Labels }}
+							{{ range $Labels }}
 
-							<a 
-                                style="text-align: left;"
-								href="{{$url}}/emails?label={{ .LabelID }}"
-								class="inbox-menu-item label"
-                            >
+								<li class="nav-item">
+									<a class="nav-link text-muted p-1" href="{{$url}}/emails?label={{ .LabelID }}">
+										<small>
+											{{ .Name }}  
+											<span class="badge float-right"> {{ .ThreadsTotal }} </span>
+										</small>
+									</a>
+								</li>
 
-								{{ .Name }}
+							{{ end }}
 
-								<span class="badge"> 
-                                    {{ .ThreadsTotal }} 
-                                </span>
-								
-							</a>
-
-						{{ end }}
+						</ul>
 
 					{{ end }}
 
-                </div>
-            </div>
-		</div>
+				{{ end }}
+			</div>
+		</nav>
+
 		<div class="col-md-10">
 
-            <div class="panel panel-inbox-read">
+            <table class="table">
 
-				<div class="panel-body">
-					<div class="inbox-read-heading">
-						<div class="clearfix">
-							<div class="pull-left">
-						        <a 
-                                    href="" 
-                                    onclick="window.history.back();return false;" 
-                                    class="btn btn-default"
-                                >
-                                    <i class="fa fa-fw fa-level-up fa-rotate-270"></i>
-                                </a>
-						    </div>
-						    <div class="pull-right">
-						    	
-						    </div>
-						</div>
-					</div>
+                <thead>
+                    <tr>
+                        <th colspan="2">
+                            <a 
+                                href="" 
+                                onclick="window.history.back();return false;" 
+                                class="btn btn-light"
+                            >
+                                <i class="fa fa-fw fa-level-up fa-rotate-270"></i>
+                            </a>
 
-					<div class="clearfix">
-						<h3 class="inbox-read-title pull-left">
-                            {{.Thread.Subject}}
-                        </h3>
-					</div>
+                            <strong class="inbox-read-title pull-left">
+                                {{.Thread.Subject}}
+                            </strong>
+
+                        </td>
+                    </tr>
+                <thead>
+                <tbody>
 
                     {{ range $key, $row := .Messages }}
 
-                        <hr class="mb-md">
+                        <tr>
+                            <td>
+                                {{ $row.From }} <strong>to</strong> {{ $row.To }}
+                            </td>
+                            <td class="text-right">
+                                on 
+                                <em>
+                                    {{ $row.Hours }}:{{ $row.Minutes }}
+                                    <small>{{ $row.Day }}.{{ $row.Month }}.{{ $row.Year }}</small>
+                                </em>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="p-3">
 
-                        <div class="inbox-read-details clearfix">
-                            <div class="pull-left">
-                                <span class="inbox-read-sender-name pull-left">
-                                    {{ $row.From }}
-                                </span>
-                            </div>
-                            <div class="pull-right">
-                                <span class="inbox-read-sent-info">
+                                {{if $row.HTML}}
 
-                                    to <strong>{{ $row.To }}</strong>, 
-                                    on 
-                                    <em>
-                                        {{ $row.Hours }}:{{ $row.Minutes }}
-                                        <small>{{ $row.Day }}.{{ $row.Month }}.{{ $row.Year }}</small>
-                                    </em>
+                                    {{ $row.HTML }}
 
-                                </span>
-                            </div>
-                        </div>
+                                {{else if $row.Text}}
 
-                        <hr class="mt-md">
+                                    <pre>
+                                        {{ $row.Text }}
+                                    </pre>
 
-                        <div class="msg-body">
-                            
-                            {{if $row.HTML}}
+                                {{else if $row.Snippet}}
 
-                                {{ $row.HTML }}
+                                    <p>
+                                        {{ $row.Snippet }}
+                                    </p>
 
-                            {{else if $row.Text}}
+                                {{end}}
 
-                                <pre>
-                                    {{ $row.Text }}
-                                </pre>
+                            </td>
+                        </tr>
 
-                            {{else if $row.Snippet}}
+                        <tr>
+                            <td colspan="2" class="p-3">
 
-                                <p>
-                                    {{ $row.Snippet }}
-                                </p>
+                                {{if $row.Attachments}}
 
-                            {{end}}
+                                    <p class="mb20">Attachments:</p>
+                                    <div class="msg-attachments row">
+                                    
+                                    {{ range $akey, $arow := $row.Attachments }}
 
-                        </div>
-                        <hr>
+                                        <div class="col-md-2">
+                                            <a href="{{$url}}/attachment/{{ $arow.AttacID }}">
+                                            <div class="well well-sm p10">
+                                                <strong>{{ $arow.Name }}</strong>
+                                            </div>
+                                            </a>
+                                        </div>
 
-                        {{if $row.Attachments}}
+                                    {{ end }}
 
-                            <p class="mb20">Attachments</p>
-                            <div class="msg-attachments row">
-                            
-                            {{ range $akey, $arow := $row.Attachments }}
-
-
-                                <div class="col-md-3">
-                                    <a href="{{$url}}/attachment/{{ $arow.AttacID }}">
-                                    <div class="well well-sm p10">
-                                        <strong>{{ $arow.Name }}</strong>
                                     </div>
-                                    </a>
-                                </div>
 
-                            {{ end }}
+                                {{end}}
 
-                            </div>
-
-                        {{end}}
+                            </td>
+                        </tr>
 
                     {{ end }}
 
-				</div>
-			</div>
+                <tbody>
+            <table>
 
 		</div>
 	</div>

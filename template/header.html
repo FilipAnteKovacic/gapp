@@ -1,49 +1,45 @@
 {{define "header"}}
 
-<header id="topnav" class="navbar navbar-midnightblue clearfix" role="banner">
+<nav class="navbar navbar-expand-md navbar-dark bg-dark">
+  <a class="navbar-brand" href="#">Gbackup</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
 
-    <div class="yamm navbar-left navbar-collapse collapse in">
-        <ul class="nav navbar-nav">
-            <li>
-                <a href="{{.URL}}/syncers" >
-                    <span class="icon-bg">
-                        <i class="fa fa-fw fa-random"></i>
-                        Sync
-                    </span>
-                </a>
-            </li>
-            <li>
-                <a href="{{.URL}}/emails">
-                    <span class="icon-bg">
-                        <i class="fa fa-fw fa-envelope"></i>
-                        Emails
-                    </span>
-                </a>
-            </li>
-            <li>
-                <a href="{{.URL}}/contacts" >
-                    <span class="icon-bg">
-                        <i class="fa fa-fw fa-users"></i>
-                        Contacts
-                    </span>
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <ul class="nav navbar-nav toolbar pull-right">
-        
-        <li>
-            <a href="#">
-                {{.User.Email}}
-            </a>
-        </li>
-        <li>
-            <a href="{{.URL}}/logout">Logout</a>
-        </li>
-
+  <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="{{.URL}}/emails">
+            <i class="fa fa-fw fa-random"></i>
+            Emails
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="{{.URL}}/contacts">
+            <i class="fa fa-fw fa-users"></i>
+            Contacts
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="{{.URL}}/syncers">
+            <i class="fa fa-fw fa-random"></i>
+            Sync
+        </a>
+      </li>
     </ul>
 
-</header>
+    <ul class="navbar-nav pull-right">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="userMenu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            {{.User.Email}}
+        </a>
+        <div class="dropdown-menu" aria-labelledby="userMenu">
+          <a class="dropdown-item" href="{{.URL}}/logout">Logout</a>
+        </div>
+      </li>
+    </ul>
+
+  </div>
+</nav>
 
 {{end}}

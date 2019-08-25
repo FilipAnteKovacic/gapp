@@ -2,9 +2,17 @@
 
 {{template "header" .}}
 
-<div class="page-heading">            
-    <h1>Syncers</h1>
+
+
+<div class="d-flex flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 border-bottom">
+	<div class="col-md-6">
+		<h6 class="p-1">
+			<span class="p-2">Syncers</span>
+		</h6>
+
+	</div>
 </div>
+
 
 {{if not .User.Token}}
 
@@ -43,32 +51,6 @@
 
 			</form>
 
-			<!--<h5>OR</h5>
-
-			<form action="" method="POST">
-			
-				<div class="form-group">
-					<label>User password</label>
-					<div class="input-group">
-						<input 
-							name="password" 
-							type="password" 
-							class="form-control" 
-							placeholder="Password"
-						>
-						<span class="input-group-addon">
-							<input 
-								type="submit" 
-								name="cred" 
-								value="Save" 
-								class="btn btn-primary pull-right"
-							>
-						</span>
-					</div>
-				</div>
-
-			</form>-->
-
 		</div>
 
 		<div class="col-md-3"></div>
@@ -85,26 +67,36 @@
                                  
 	<div class="row">
 
-		<div class="col-md-2">
+		<nav class="col-md-2 d-none d-md-block bg-light sidebar">
+			<div class="sidebar-sticky">
 
-			<div class="panel">
+			<h4 class="border-bottom pt-2 pb-2">
+				
+				<form action="" method="POST" class="form-horizontal">
+					<input type="submit" name="contacts" value="Sync contacts" class="btn btn-primary ">
+				</form>
 
-				<div class="panel-body">
+			</h4>
 
+			<h4 class="border-bottom pt-2 pb-2">
+				
+				<form action="" method="POST" class="form-horizontal">
+					<input type="submit" name="labels" value="Sync labels" class="btn btn-danger ">
+				</form>
 
-					<form action="" method="POST" class="form-horizontal">
-						<input type="submit" name="contacts" value="Sync contacts" class="btn btn-primary ">
-					</form>
-					<hr/>
+			</h4>
 
-					<form action="" method="POST" class="form-horizontal">
-						<input type="submit" name="labels" value="Sync labels" class="btn btn-danger ">
-					</form>
-					<hr/>
+			<h4 class="border-bottom pt-2 pb-2">
+				
+				New gmail sync query
+
+			</h4>
+
+			<ul class="nav flex-column mb-2">
+
+				<li class="nav-item">
 					<form action="" method="POST" class="form-horizontal">
 						<div class="form-group">
-
-							<label>New gmail sync query</label>
 							<input 
 								type="query" 
 								name="query" 
@@ -114,45 +106,39 @@
 						</div>
 						<input type="submit" name="gmail" value="Start" class="btn btn-primary pull-right">
 					</form>
-				</div>
+				</li>
 
-			</div>
-			
-		</div>
+			</ul>
+
+		</nav>
 		<div class="col-md-10">
-			<div class="panel panel-inbox">
+			<table class="table table-striped table-hover">
 
-				<div class="panel-body">
+				<thead>
+				
+					<tr>
+						<th>Query</th>
+						<th>Start</th>
+						<th>End</th>
+						<th>Count</th>
+					</tr>
 
-					<table class="table table-striped table-hover table-inbox mb0 table-vam">
+				</thead>
+				<tbody>
 
-						<thead>
-						
-							<tr>
-								<th>Query</th>
-								<th>Start</th>
-								<th>End</th>
-								<th>Count</th>
-							</tr>
+					{{ range $key, $row := .Syncers }}
 
-						</thead>
-						<tbody>
+						<tr>
+							<td>{{ $row.Query }}</td>
+							<td>{{ $row.Start }}</td>
+							<td>{{ $row.End }}</td>
+							<td>{{ $row.Count }}</td>
+						</tr>	
 
-							{{ range $key, $row := .Syncers }}
+					{{ end }}
 
-								<tr>
-									<td>{{ $row.Query }}</td>
-									<td>{{ $row.Start }}</td>
-									<td>{{ $row.End }}</td>
-									<td>{{ $row.Count }}</td>
-								</tr>	
-
-							{{ end }}
-
-						</tbody>
-					</table>
-				</div>
-			</div>
+				</tbody>
+			</table>
 		</div>
 	</div>
 
