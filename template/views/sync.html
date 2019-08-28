@@ -85,7 +85,7 @@
 
 			<h4 class="border-bottom pt-2 pb-2">
 				
-				New gmail sync query
+				Gmail sync
 
 			</h4>
 
@@ -95,12 +95,23 @@
 					<form action="" method="POST" class="form-horizontal">
 						<div class="form-group">
 							<input 
-								type="query" 
+								type="text" 
 								name="query" 
 								class="form-control" 
 								placeholder="Query" 
 							>
 						</div>
+						<div class="form-group">
+							<select name="type" class="form-control" >
+								<option value="init">One time</option>
+								<option value="daily">Daily</option>
+							</select>
+						</div>
+						<div class="form-group form-check">
+							<input type="checkbox" name="deleteEmail" value="true" class="form-check-input" id="deleteEmail">
+							<label class="form-check-label" for="deleteEmail">Delete sync email</label>
+						</div>
+
 						<input type="submit" name="gmail" value="Start" class="btn btn-primary pull-right">
 					</form>
 				</li>
@@ -114,10 +125,14 @@
 				<thead>
 				
 					<tr>
+						<th>CreatedBy</th>
 						<th>Query</th>
+						<th>Type</th>
+						<th>DeleteEmail</th>
+						<th>Count</th>
+						<th>Duration</th>
 						<th>Start</th>
 						<th>End</th>
-						<th>Count</th>
 					</tr>
 
 				</thead>
@@ -126,10 +141,14 @@
 					{{ range $key, $row := .Syncers }}
 
 						<tr>
+							<td>{{ $row.CreatedBy }}</td>
 							<td>{{ $row.Query }}</td>
+							<td>{{ $row.Type }}</td>
+							<td>{{ $row.DeleteEmail }}</td>
+							<td>{{ $row.Count }}</td>
+							<td>{{ $row.Duration }}</td>
 							<td>{{ $row.Start }}</td>
 							<td>{{ $row.End }}</td>
-							<td>{{ $row.Count }}</td>
 						</tr>	
 
 					{{ end }}

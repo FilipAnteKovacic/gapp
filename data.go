@@ -16,13 +16,20 @@ import (
 
 // Syncer struct for sync queries
 type Syncer struct {
-	ID            bson.ObjectId `json:"id" bson:"_id,omitempty"`
-	Owner         string        `json:"owner" bson:"owner,omitempty"`
-	Query         string        `json:"query" bson:"query,omitempty"`
-	Start         time.Time     `json:"start" bson:"start,omitempty"`
-	End           time.Time     `json:"end" bson:"end,omitempty"`
-	Count         int           `json:"count" bson:"count,omitempty"`
-	LastPageToken string        `json:"lastPageToken" bson:"lastPageToken,omitempty"`
+	ID               bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	CreatedBy        string        `json:"createdBy" bson:"createdBy,omitempty"`
+	Owner            string        `json:"owner" bson:"owner,omitempty"`
+	Query            string        `json:"query" bson:"query,omitempty"`
+	Type             string        `json:"type" bson:"type,omitempty"`
+	DeleteEmail      string        `json:"deleteEmail" bson:"deleteEmail,omitempty"`
+	Start            time.Time     `json:"start" bson:"start,omitempty"`
+	End              time.Time     `json:"end" bson:"end,omitempty"`
+	Duration         string        `json:"duration" bson:"duration,omitempty"`
+	Count            int           `json:"count" bson:"count,omitempty"`
+	LastPageToken    string        `json:"lastPageToken" bson:"lastPageToken,omitempty"`
+	NextPageToken    string        `json:"nextPageToken" bson:"nextPageToken,omitempty"`
+	LastFirstMsgDate string        `json:"lastFirstMsgDate" bson:"lastFirstMsgDate,omitempty"`
+	Status           string        `json:"status" bson:"status,omitempty"`
 }
 
 // GetAllSyncers return all syncers by user
@@ -53,6 +60,62 @@ func GetAllSyncers(user User) []Syncer {
 
 }
 
+// GetAllDailyUserGenSyncers return all syncers created by user, type: daily
+func GetAllDailyUserGenSyncers() []Syncer {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetAllUserGenSyncers",
+	}
+
+	defer SaveLog(proc)
+
+	var gdata []Syncer
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("syncers")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"type": "daily", "createdBy": "user", "status": "end"}).All(&gdata)
+	if err != nil {
+		HandleError(proc, "get syncers", err, true)
+		return gdata
+	}
+
+	return gdata
+
+}
+
+// GetLastSystemSync get system sync from id
+func GetLastSystemSync(id string) Syncer {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "Function",
+		Service: "admin",
+		Name:    "GetLastSystemSync",
+	}
+
+	defer SaveLog(proc)
+
+	var s Syncer
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("syncers")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"createdBy": "system", "type": id}).Sort("-start").One(&s)
+	if err != nil {
+		HandleError(proc, "get sync", err, true)
+		return s
+	}
+
+	return s
+
+}
+
 // CRUDSyncer save syncer
 func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
 
@@ -62,6 +125,8 @@ func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
 		Service: "gmailSync",
 		Name:    "CRUDSyncer",
 	}
+
+	sync.Duration = sync.End.Sub(sync.Start).String()
 
 	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("syncers")
 
@@ -194,6 +259,8 @@ type Thread struct {
 	Subject      string        `json:"subject" bson:"subject,omitempty"`
 	Snippet      string        `json:"snippet" bson:"snippet,omitempty"`
 	MsgCount     int           `json:"msgCount" bson:"msgCount,omitempty"`
+	FirstMsgDate string        `json:"firstMsgDate" bson:"firstMsgDate,omitempty"`
+	LastMsgDate  string        `json:"lastMsgDate" bson:"lastMsgDate,omitempty"`
 	AttchCount   int           `json:"attchCount" bson:"attchCount,omitempty"`
 	Labels       []string      `json:"labels" bson:"labels,omitempty"`
 	InternalDate time.Time     `json:"internalDate" bson:"internalDate,omitempty"`

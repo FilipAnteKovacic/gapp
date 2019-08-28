@@ -279,9 +279,14 @@ func SyncGMail(syncer Syncer) {
 	user := GetUserByEmail(syncer.Owner)
 	svc := GetGmailService(user)
 
+	syncer.Status = "start"
+	CRUDSyncer(syncer, DBC)
+
 	if svc != nil {
 
 		syncer.Count = 0
+
+		var lastFirstMsgDate string
 
 		//Gmail API page loop
 		pageToken := ""
@@ -297,6 +302,9 @@ func SyncGMail(syncer Syncer) {
 				return
 			}
 
+			syncer.Status = "start page " + pageToken
+			CRUDSyncer(syncer, DBC)
+
 			var wgCostDrv sync.WaitGroup
 
 			for _, thread := range r.Threads {
@@ -304,14 +312,20 @@ func SyncGMail(syncer Syncer) {
 				syncer.Count++
 
 				wgCostDrv.Add(1)
-				go ProccessGmailThread(user, thread, svc, DBC, &wgCostDrv)
+				go ProccessGmailThread(user, thread, svc, DBC, &lastFirstMsgDate, &wgCostDrv)
 
 			}
 
 			wgCostDrv.Wait()
 
 			pageToken = r.NextPageToken
+			syncer.NextPageToken = r.NextPageToken
 			syncer.LastPageToken = pageToken
+			syncer.Status = "end page " + pageToken
+
+			if syncer.CreatedBy == "user" {
+				syncer.LastFirstMsgDate = lastFirstMsgDate
+			}
 
 			CRUDSyncer(syncer, DBC)
 
@@ -324,6 +338,7 @@ func SyncGMail(syncer Syncer) {
 		}
 
 		syncer.End = time.Now()
+		syncer.Status = "end"
 
 		CRUDSyncer(syncer, DBC)
 
@@ -338,7 +353,7 @@ if err := svc.Users.Messages.Delete("me", m.gmailID).Do(); err != nil {
 */
 
 // ProccessGmailThread process single thread
-func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DBC *mgo.Session, wgi *sync.WaitGroup) {
+func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DBC *mgo.Session, lastFirstMsgDate *string, wgi *sync.WaitGroup) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -369,10 +384,12 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 	t.MsgCount = len(thread.Messages)
 	t.AttchCount = 0
+	t.FirstMsgDate = ""
+	t.LastMsgDate = ""
 
 	if t.MsgCount != 0 {
 
-		for _, msg := range thread.Messages {
+		for key, msg := range thread.Messages {
 
 			internalDate := time.Unix(msg.InternalDate/1000, 0)
 
@@ -503,6 +520,20 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 				t.Minutes = mtread.Minutes
 				t.Seconds = mtread.Seconds
 
+				if key == 0 {
+					t.FirstMsgDate = mtread.Date
+
+					if *lastFirstMsgDate == "" {
+						*lastFirstMsgDate = mtread.Date
+					}
+
+					if *lastFirstMsgDate < mtread.Date {
+						*lastFirstMsgDate = mtread.Date
+					}
+
+				}
+				t.LastMsgDate = mtread.Date
+
 			}
 
 			CRUDRawMessage(msgo, DBC)
@@ -623,4 +654,54 @@ func ParseMessageHeaders(headers []*gmail.MessagePartHeader) map[string]string {
 	}
 
 	return h
+}
+
+// DailySync generate system syncers by users
+func DailySync() {
+
+	for {
+
+		syncers := GetAllDailyUserGenSyncers()
+
+		DBC := MongoSession()
+		defer DBC.Close()
+
+		if len(syncers) != 0 {
+
+			for _, sync := range syncers {
+
+				initSyncID := sync.ID.Hex()
+
+				lastSystemSync := GetLastSystemSync(initSyncID)
+
+				if lastSystemSync.Owner != "" {
+					sync = lastSystemSync
+				}
+
+				afterDate, _ := time.Parse("2006-01-02", sync.LastFirstMsgDate)
+
+				query := "after:" + afterDate.Format("2006/01/02") + " before:" + afterDate.AddDate(0, 0, 1).Format("2006/01/02")
+
+				s := Syncer{
+					CreatedBy:        "system",
+					Owner:            sync.Owner,
+					Query:            query,
+					Type:             initSyncID,
+					DeleteEmail:      sync.DeleteEmail,
+					Start:            time.Now(),
+					LastFirstMsgDate: afterDate.AddDate(0, 0, 1).Format("2006-01-02"),
+				}
+
+				// init save syncer
+				CRUDSyncer(s, DBC)
+
+				go SyncGMail(s)
+
+			}
+		}
+
+		time.Sleep(2 * time.Minute)
+
+	}
+
 }

@@ -51,10 +51,12 @@ BUILDING CONTINER
     docker pull registry.gitlab.com/tmcsolutions/gapp:v1
 
 
+
+
 - init sync/daily
 - delete mail after sync
 
-- attachments view
-- attachments search
-
 - group emails table by date, sender
+
+- thread analitycs
+- account analitycs

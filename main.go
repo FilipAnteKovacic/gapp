@@ -16,6 +16,12 @@ var N = Notifications{
 	HaveNotfications: false,
 }
 
+func init() {
+
+	go DailySync()
+
+}
+
 func main() {
 
 	StartApp()

@@ -368,9 +368,12 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				}
 
 				s := Syncer{
-					Owner: u.Email,
-					Query: query,
-					Start: time.Now(),
+					CreatedBy:   "user",
+					Owner:       u.Email,
+					Query:       query,
+					Type:        r.FormValue("type"),
+					DeleteEmail: r.FormValue("deleteEmail"),
+					Start:       time.Now(),
 				}
 
 				// init save syncer
@@ -532,15 +535,14 @@ var AuthController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		AppRedirect(w, r, "/login", 302)
 		return
 
-		break
 	case "/logout":
 
 		p = Page{Name: "Logout", View: "logout"}
 
 		RemoveAllSessions(w)
 		AppRedirect(w, r, "/login", 302)
+		return
 
-		break
 	case "/login":
 		p = Page{Name: "Login", View: "login"}
 
