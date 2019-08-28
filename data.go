@@ -278,7 +278,7 @@ func CRUDThread(thread Thread, DBC *mgo.Session) {
 
 	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("threads")
 
-	queryCheck := bson.M{"threadID": thread.ThreadID}
+	queryCheck := bson.M{"threadID": thread.ThreadID, "owner": thread.Owner}
 
 	actRes := Thread{}
 	err := mongoC.Find(queryCheck).One(&actRes)
