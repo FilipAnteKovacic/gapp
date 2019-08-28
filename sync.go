@@ -312,7 +312,7 @@ func SyncGMail(syncer Syncer) {
 				syncer.Count++
 
 				wgCostDrv.Add(1)
-				go ProccessGmailThread(user, thread, svc, DBC, &lastFirstMsgDate, &wgCostDrv)
+				go ProccessGmailThread(user, thread, syncer.DeleteEmail, svc, DBC, &lastFirstMsgDate, &wgCostDrv)
 
 			}
 
@@ -346,14 +346,8 @@ func SyncGMail(syncer Syncer) {
 
 }
 
-/*
-if err := svc.Users.Messages.Delete("me", m.gmailID).Do(); err != nil {
-	log.Fatalf("unable to delete message %v: %v", m.gmailID, err)
-}
-*/
-
 // ProccessGmailThread process single thread
-func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DBC *mgo.Session, lastFirstMsgDate *string, wgi *sync.WaitGroup) {
+func ProccessGmailThread(user User, thread *gmail.Thread, deleteMsgs string, svc *gmail.Service, DBC *mgo.Session, lastFirstMsgDate *string, wgi *sync.WaitGroup) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -538,6 +532,14 @@ func ProccessGmailThread(user User, thread *gmail.Thread, svc *gmail.Service, DB
 
 			CRUDRawMessage(msgo, DBC)
 			CRUDThreadMessage(mtread, DBC)
+
+			/*
+				if deleteMsgs == "true" {
+					if err := svc.Users.Messages.Delete(user.Email, msgo.MsgID).Do(); err != nil {
+						log.Fatalf("unable to delete message %v: %v", msgo.MsgID, err)
+					}
+				}
+			*/
 
 		}
 
