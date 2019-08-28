@@ -700,7 +700,7 @@ func DailySync() {
 			}
 		}
 
-		time.Sleep(2 * time.Minute)
+		time.Sleep(24 * time.Hour)
 
 	}
 
