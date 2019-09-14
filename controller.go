@@ -333,9 +333,11 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			if r.FormValue("labels") != "" && u.Token != nil {
 
 				s := Syncer{
-					Owner: u.Email,
-					Query: "labels",
-					Start: time.Now(),
+					CreatedBy: "user",
+					Owner:     u.Email,
+					Query:     "labels",
+					Type:      "init",
+					Start:     time.Now(),
 				}
 
 				// init save syncer
@@ -348,9 +350,11 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			if r.FormValue("contacts") != "" && u.Token != nil {
 
 				s := Syncer{
-					Owner: u.Email,
-					Query: "contacts",
-					Start: time.Now(),
+					CreatedBy: "user",
+					Owner:     u.Email,
+					Query:     "contacts",
+					Type:      "init",
+					Start:     time.Now(),
 				}
 
 				// init save syncer
