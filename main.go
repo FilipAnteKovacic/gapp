@@ -2,10 +2,8 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"reflect"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -56,37 +54,4 @@ func StartApp() {
 		return
 	}
 
-}
-
-// InArray check if exist in array
-func InArray(val interface{}, array interface{}) (exists bool, index int) {
-	exists = false
-	index = -1
-
-	switch reflect.TypeOf(array).Kind() {
-	case reflect.Slice:
-		s := reflect.ValueOf(array)
-
-		for i := 0; i < s.Len(); i++ {
-			if reflect.DeepEqual(val, s.Index(i).Interface()) == true {
-				index = i
-				exists = true
-				return
-			}
-		}
-	}
-
-	return
-}
-
-// RandStringBytes generate random string
-func RandStringBytes(n int) string {
-
-	letterBytes := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
 }

@@ -95,6 +95,15 @@ type GPagging struct {
 // MailController handle other requests
 var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "controller",
+		Service: "gapp",
+		Name:    "MailController",
+	}
+
+	defer SaveLog(proc)
+
 	redirect := CheckAuth(w, r, false, "/login")
 
 	if !redirect {
@@ -144,6 +153,15 @@ var MailController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 // AttachController get attachment & push to client on download
 var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "controller",
+		Service: "gapp",
+		Name:    "AttachController",
+	}
+
+	defer SaveLog(proc)
+
 	redirect := CheckAuth(w, r, false, "/login")
 
 	if !redirect {
@@ -192,6 +210,15 @@ var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 
 // MailsController handle other requests
 var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "controller",
+		Service: "gapp",
+		Name:    "MailsController",
+	}
+
+	defer SaveLog(proc)
 
 	redirect := CheckAuth(w, r, false, "/login")
 
@@ -280,6 +307,15 @@ var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 // ContactsController handle token requests
 var ContactsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "controller",
+		Service: "gapp",
+		Name:    "ContactsController",
+	}
+
+	defer SaveLog(proc)
+
 	redirect := CheckAuth(w, r, false, "/login")
 
 	if !redirect {
@@ -318,6 +354,15 @@ var ContactsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Re
 
 // SyncController handle token requests
 var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "controller",
+		Service: "gapp",
+		Name:    "SyncController",
+	}
+
+	defer SaveLog(proc)
 
 	redirect := CheckAuth(w, r, false, "/login")
 

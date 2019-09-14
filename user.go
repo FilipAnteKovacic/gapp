@@ -25,9 +25,9 @@ func CreateUser(user User) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "user",
-		Name:    "RegisterUser",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "CreateUser",
 	}
 
 	defer SaveLog(proc)
@@ -51,8 +51,8 @@ func UpdateUser(ID string, user User) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "user",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "UpdateUser",
 	}
 
@@ -78,8 +78,8 @@ func GetUser(uid string) User {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "user",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetUser",
 	}
 
@@ -110,8 +110,8 @@ func GetUserByEmail(email string) User {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "user",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetUserByEmail",
 	}
 
@@ -142,8 +142,8 @@ func CheckUser(eml, pwd string) string {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "checkUser",
 	}
 

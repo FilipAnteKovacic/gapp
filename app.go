@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -17,7 +19,6 @@ func MongoSession() *mgo.Session {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Count:   0,
 		Type:    "function",
 		Service: "loocpi_rates",
 		Name:    "mongoSession",
@@ -59,43 +60,38 @@ func SaveLog(log ServiceLog) {
 		Name:    "saveLog",
 	}
 
-	if os.Getenv("LOG") == "true" {
+	if log.Status == "" {
+		log.Status = "ok"
+	}
 
-		if log.Status == "" {
-			log.Status = "ok"
-		}
+	log.UniqueService = log.Type + "." + log.Service + "." + log.Name
 
-		log.UniqueService = log.Type + "." + log.Service + "." + log.Name
+	log.End = time.Now()
+	log.Duration = log.End.Sub(log.Start).String()
 
-		log.End = time.Now()
-		log.Duration = log.End.Sub(log.Start).String()
+	LogsDB := MongoSession()
+	defer LogsDB.Close()
 
-		LogsDB := MongoSession()
-		defer LogsDB.Close()
+	TypeDBC := LogsDB.DB(os.Getenv("MONGO_DB")).C("_" + strings.ToLower(log.Type) + "Logs")
+	err := TypeDBC.Insert(log)
 
-		TypeDBC := LogsDB.DB(os.Getenv("MONGO_DB")).C("_" + strings.ToLower(log.Type) + "Logs")
-		err := TypeDBC.Insert(log)
+	if err != nil {
+		HandleError(proc, "insert TypeDBC ", err, true)
+	}
 
+	TypeStatusDBC := LogsDB.DB(os.Getenv("MONGO_DB")).C("_statusLogs")
+
+	err = TypeStatusDBC.Update(bson.M{"uniqueService": log.UniqueService}, bson.M{"$set": log})
+	if err != nil {
+		HandleError(proc, "update TypeStatusDBC ", err, true)
+
+		err = TypeStatusDBC.Insert(log)
 		if err != nil {
-			HandleError(proc, "insert TypeDBC ", err, true)
-		}
-
-		TypeStatusDBC := LogsDB.DB(os.Getenv("MONGO_DB")).C("_statusLogs")
-
-		err = TypeStatusDBC.Update(bson.M{"uniqueService": log.UniqueService}, bson.M{"$set": log})
-		if err != nil {
-			HandleError(proc, "update TypeStatusDBC ", err, true)
-
-			err = TypeStatusDBC.Insert(log)
-			if err != nil {
-				HandleError(proc, "insert TypeStatusDBC ", err, true)
-				return
-			}
+			HandleError(proc, "insert TypeStatusDBC ", err, true)
 			return
 		}
 		return
 	}
-
 	return
 
 }
@@ -108,7 +104,6 @@ func HandleError(proc ServiceLog, status string, err error, save bool) {
 		fmt.Println("------------")
 		fmt.Println("----ERROR---")
 		fmt.Println("------------")
-
 		fmt.Println(proc)
 		fmt.Println("------------")
 		fmt.Println(status)
@@ -116,10 +111,6 @@ func HandleError(proc ServiceLog, status string, err error, save bool) {
 		fmt.Println(err)
 		fmt.Println("------------")
 
-	}
-
-	if os.Getenv("PRINT_ERROR") == "true" {
-		fmt.Println(status, err)
 	}
 
 	if save {
@@ -130,4 +121,37 @@ func HandleError(proc ServiceLog, status string, err error, save bool) {
 	}
 
 	return
+}
+
+// InArray check if exist in array
+func InArray(val interface{}, array interface{}) (exists bool, index int) {
+	exists = false
+	index = -1
+
+	switch reflect.TypeOf(array).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(array)
+
+		for i := 0; i < s.Len(); i++ {
+			if reflect.DeepEqual(val, s.Index(i).Interface()) == true {
+				index = i
+				exists = true
+				return
+			}
+		}
+	}
+
+	return
+}
+
+// RandStringBytes generate random string
+func RandStringBytes(n int) string {
+
+	letterBytes := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }

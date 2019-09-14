@@ -37,9 +37,9 @@ func GetAllSyncers(user User) []Syncer {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "GetGMailLabels",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetAllSyncers",
 	}
 
 	defer SaveLog(proc)
@@ -65,8 +65,8 @@ func GetAllDailyUserGenSyncers() []Syncer {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetAllUserGenSyncers",
 	}
 
@@ -93,8 +93,8 @@ func GetLastSystemSync(id string) Syncer {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetLastSystemSync",
 	}
 
@@ -121,8 +121,8 @@ func CRUDSyncer(sync Syncer, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "CRUDSyncer",
 	}
 
@@ -175,8 +175,8 @@ func GetAllContacts(user User) []Contact {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetAllContacts",
 	}
 
@@ -203,9 +203,9 @@ func CRUDContact(p Contact, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "CRUDSyncer",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "CRUDContact",
 	}
 
 	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("contacts")
@@ -271,8 +271,8 @@ func CRUDThread(thread Thread, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "CRUDThread",
 	}
 
@@ -319,9 +319,9 @@ func GetThreads(user User, label string, page int, s ESearch) (int, []Thread) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "getGMails",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetThreads",
 	}
 
 	defer SaveLog(proc)
@@ -474,8 +474,8 @@ func GetThread(threadID, owner string) Thread {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetThread",
 	}
 
@@ -541,9 +541,9 @@ func CRUDThreadMessage(msg ThreadMessage, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "CRUDMessages",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "CRUDThreadMessage",
 	}
 
 	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("messages")
@@ -595,9 +595,9 @@ func CRUDRawMessage(msg RawMessage, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "CRUDMessages",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "CRUDRawMessage",
 	}
 
 	mongoC := DBC.DB(os.Getenv("MONGO_DB")).C("messagesRaw")
@@ -635,9 +635,9 @@ func GetThreadMessages(user User, treadID string) []ThreadMessage {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "getGMails",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetThreadMessages",
 	}
 
 	defer SaveLog(proc)
@@ -681,8 +681,8 @@ func CRUDAttachment(attch Attachment, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "CRUDAttachment",
 	}
 
@@ -765,8 +765,8 @@ func GetAttachment(attachID string) Attachment {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetAttachment",
 	}
 
@@ -812,8 +812,8 @@ func CRUDLabel(label Label, DBC *mgo.Session) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "CRUDLabel",
 	}
 
@@ -851,9 +851,9 @@ func GetLabels(user User) []Label {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "GetGMailLabels",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetLabels",
 	}
 
 	defer SaveLog(proc)
@@ -879,9 +879,9 @@ func GetLabelsList(user User) (string, map[string]string) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "GetLabelsByType",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetLabelsList",
 	}
 
 	defer SaveLog(proc)
@@ -924,8 +924,8 @@ func GetLabelsByType(user User) map[string][]Label {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetLabelsByType",
 	}
 
@@ -964,8 +964,8 @@ func GetAttachmentGridFS(attach Attachment) *mgo.GridFile {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "GetAttachmentGridFS",
 	}
 
@@ -999,9 +999,9 @@ func GetGMailsStats(user User) GStats {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "getGMailsStats",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetGMailsStats",
 	}
 
 	defer SaveLog(proc)

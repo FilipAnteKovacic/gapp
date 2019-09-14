@@ -20,9 +20,9 @@ func GetGmailService(user User) *gmail.Service {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "RefreshToken",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetGmailService",
 	}
 
 	if user.Token.Expiry.Add(2*time.Hour).Format("2006-01-02T15:04:05") < time.Now().Format("2006-01-02T15:04:05") {
@@ -63,9 +63,9 @@ func GetPeopleService(user User) *people.Service {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "RefreshToken",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetPeopleService",
 	}
 
 	if user.Token.Expiry.Add(2*time.Hour).Format("2006-01-02T15:04:05") < time.Now().Format("2006-01-02T15:04:05") {
@@ -98,8 +98,8 @@ func SyncGPeople(syncer Syncer) {
 	proc := ServiceLog{
 		Start:   time.Now(),
 		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "SyncGLabels",
+		Service: "gapp",
+		Name:    "SyncGPeople",
 	}
 
 	defer SaveLog(proc)
@@ -188,7 +188,7 @@ func SyncGLabels(syncer Syncer) {
 	proc := ServiceLog{
 		Start:   time.Now(),
 		Type:    "proccess",
-		Service: "gmailSync",
+		Service: "gapp",
 		Name:    "SyncGLabels",
 	}
 
@@ -269,7 +269,7 @@ func SyncGMail(syncer Syncer) {
 	proc := ServiceLog{
 		Start:   time.Now(),
 		Type:    "proccess",
-		Service: "gmailSync",
+		Service: "gapp",
 		Name:    "SyncGMail",
 	}
 
@@ -353,8 +353,8 @@ func ProccessGmailThread(user User, thread *gmail.Thread, deleteMsgs string, svc
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
+		Type:    "function",
+		Service: "gapp",
 		Name:    "ProccessGmailThread",
 	}
 
@@ -558,9 +558,9 @@ func ProcessPayload(msgID string, user User, p *gmail.MessagePart, svc *gmail.Se
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "proccess",
-		Service: "gmailSync",
-		Name:    "ProcessMessageParts",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "ProcessPayload",
 	}
 
 	defer SaveLog(proc)

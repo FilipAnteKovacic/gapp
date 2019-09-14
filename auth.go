@@ -34,9 +34,9 @@ func SetSession(id string, r http.ResponseWriter) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "setSession",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "SetSession",
 	}
 
 	defer SaveLog(proc)
@@ -80,9 +80,9 @@ func CookieValid(r *http.Request) string {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "cookieValid",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "CookieValid",
 	}
 
 	defer SaveLog(proc)
@@ -133,9 +133,9 @@ func HashAndSalt(pwd string) string {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "hashAndSalt",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "HashAndSalt",
 	}
 
 	defer SaveLog(proc)
@@ -160,9 +160,9 @@ func ComparePasswords(hashedPwd string, plainPwd string) bool {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "admin",
-		Name:    "comparePasswords",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "ComparePasswords",
 	}
 
 	defer SaveLog(proc)

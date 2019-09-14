@@ -6,9 +6,7 @@ ENV
 - URL           - APP URL
 - APP_PORT      - APP PORT
 
-- PRINT_ERROR   - print error in console
 - DEBUG         - print error in console
-- LOG           - true/false
 
 ENV USE
 os.Getenv("MONGO_DB")
@@ -51,12 +49,6 @@ BUILDING CONTINER
     docker pull registry.gitlab.com/tmcsolutions/gapp:v1
 
 
+- exced limit
 
-
-- init sync/daily
 - delete mail after sync
-
-- group emails table by date, sender
-
-- thread analitycs
-- account analitycs
