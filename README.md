@@ -1,54 +1,48 @@
-Gbackup
+# GApp
+Backup data from gmail
 
-ENV
-- MONGO_CONN    - string for mongo connection
-- MONGO_DB      - app for gmail backup
-- URL           - APP URL
-- APP_PORT      - APP PORT
+* Emails + Attachments
+* Labels
+* Contacts 
 
-- DEBUG         - print error in console
+Requires MongoDB database for storing data
 
-ENV USE
-os.Getenv("MONGO_DB")
+### Usage
+ - backup
+ - apps integration, expl. CRM
 
-GO RUN PROGRAM
-LOOP=60 go run *.go
+* Register user
+* Add JSON OAuth cliend ID
+* Add syncers
 
+### Install
 
-MONGO_CONN="192.168.1.221:27017" MONGO_DB="gmail" URL="http://192.168.1.221:8400/" APP_PORT="80" LOG="true" PRINT_ERROR="true" go run *.go
+```
+clone project
+```
 
-MONGO_CONN="localhost:27017" MONGO_DB="gmail" URL="http://localhost:8080/" APP_PORT="8080" LOG="true" PRINT_ERROR="true" go run *.go
+* MONGO_CONN    - mongo connection string
+* MONGO_DB      - mongo database name
+* URL           - application url
+* APP_PORT      - application port
+* DEBUG         - print error in console
 
-GIT
-git init
+#### GO RUN
+```
+MONGO_CONN=localhost:27017 MONGO_DB=gmail URL=http://localhost:8080/ APP_PORT=8080 DEBUG=true go run *.go
+```
 
-GIT ADD REMOTE
-git remote add origin https://gitlab.com/tmcsolutions/gapp.git
+#### DOCKER RUN
+```
+docker build -t gapp:v1 .
+docker run  -e "MONGO_CONN=localhost:27017" -e "MONGO_DB=gmail" -e "URL=http://localhost:8080/" -e "APP_PORT=8080" -e "DEBUG=true"  --name gapp gapp:v1
+```
 
-GIT ADD
-git add .
+# Tasks
 
-GIT COMMIT
-git commit -m "Initial commit"
+## Sync
+- [ ] Handle exced limit
 
-GIT PUSH
-git push -u origin master
-
-
-BUILDING CONTINER
-
-- gitlab
-
-    - build
-    docker build -t registry.gitlab.com/tmcsolutions/gapp:v1 .
-
-    - push
-    docker push registry.gitlab.com/tmcsolutions/gapp:v1 
-
-    - pull
-    docker pull registry.gitlab.com/tmcsolutions/gapp:v1
-
-
-- exced limit
-
-- delete mail after sync
+## Single email view
+- [ ] Load message images
+- [ ] Threads collapse
