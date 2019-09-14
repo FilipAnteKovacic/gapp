@@ -164,6 +164,8 @@ func SyncGPeople(syncer Syncer) {
 			pageToken = r.NextPageToken
 			syncer.LastPageToken = pageToken
 
+			syncer.Count++
+
 			CRUDSyncer(syncer, DBC)
 
 			if r.NextPageToken == "" {
