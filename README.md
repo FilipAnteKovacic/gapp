@@ -1,5 +1,5 @@
 # GApp
-Backup data from gmail
+Golang + MongoDB - Backup data from gmail
 
 * Emails + Attachments
 * Labels
