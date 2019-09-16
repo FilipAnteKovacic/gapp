@@ -60,6 +60,34 @@ func GetAllSyncers(user User) []Syncer {
 
 }
 
+// GetUnfinishedSyncers return all syncers created by user, type: daily
+func GetUnfinishedSyncers() []Syncer {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetUnfinishedSyncers",
+	}
+
+	defer SaveLog(proc)
+
+	var gdata []Syncer
+
+	DB := MongoSession()
+	DBC := DB.DB(os.Getenv("MONGO_DB")).C("syncers")
+	defer DB.Close()
+
+	err := DBC.Find(bson.M{"end": bson.M{"$exist": false}}).All(&gdata)
+	if err != nil {
+		HandleError(proc, "get syncers", err, true)
+		return gdata
+	}
+
+	return gdata
+
+}
+
 // GetAllDailyUserGenSyncers return all syncers created by user, type: daily
 func GetAllDailyUserGenSyncers() []Syncer {
 

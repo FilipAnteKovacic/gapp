@@ -282,6 +282,11 @@ func SyncGMail(syncer Syncer) {
 
 		//Gmail API page loop
 		pageToken := ""
+
+		if syncer.LastPageToken != "" {
+			pageToken = syncer.LastPageToken
+		}
+
 		for {
 
 			req := svc.Users.Threads.List(user.Email).Q(syncer.Query)
@@ -596,10 +601,13 @@ func ProcessPayload(msgID string, user User, p *gmail.MessagePart, svc *gmail.Se
 				ThreadID: mtread.ThreadID,
 				AttachID: p.Body.AttachmentId,
 				Filename: p.Filename,
-				Size:     attachment.Size,
 				MimeType: p.MimeType,
 				Headers:  ah,
 				Data:     attachment.Data,
+			}
+
+			if attachment.Size != 0 {
+				a.Size = attachment.Size
 			}
 
 			am := MessageAttachment{
@@ -653,10 +661,23 @@ func DailySync() {
 
 	for {
 
-		syncers := GetAllDailyUserGenSyncers()
-
 		DBC := MongoSession()
 		defer DBC.Close()
+
+		unfinishedSyncers := GetUnfinishedSyncers()
+		if len(unfinishedSyncers) != 0 {
+
+			for _, sync := range unfinishedSyncers {
+
+				if sync.LastPageToken != "" {
+					go SyncGMail(sync)
+				}
+
+			}
+
+		}
+
+		syncers := GetAllDailyUserGenSyncers()
 
 		if len(syncers) != 0 {
 
