@@ -525,13 +525,11 @@ func ProccessGmailThread(user User, thread *gmail.Thread, deleteMsgs string, svc
 			CRUDRawMessage(msgo, DBC)
 			CRUDThreadMessage(mtread, DBC)
 
-			/*
-				if deleteMsgs == "true" {
-					if err := svc.Users.Messages.Delete(user.Email, msgo.MsgID).Do(); err != nil {
-						log.Fatalf("unable to delete message %v: %v", msgo.MsgID, err)
-					}
+			if deleteMsgs == "true" {
+				if err := svc.Users.Messages.Delete(user.Email, msgo.MsgID).Do(); err != nil {
+					HandleError(proc, "unable to delete message "+msgo.MsgID, err, true)
 				}
-			*/
+			}
 
 		}
 
