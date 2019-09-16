@@ -37,15 +37,6 @@ func GetGmailService(user User) *gmail.Service {
 		}
 	}
 
-	/*
-		sourceToken, err := google.JWTAccessTokenSourceFromJSON(user.Credentials, gmail.MailGoogleComScope)
-		if err != nil {
-			log.Fatal("jwt to conf | ", err)
-		}
-		user.Token, _ = sourceToken.Token()
-
-		UpdateUser(user.ID.Hex(), user)
-	*/
 	// get client for using Gmail API
 	client := user.Config.Client(oauth2.NoContext, user.Token)
 	svc, err := gmail.New(client)
@@ -121,7 +112,6 @@ func SyncGPeople(syncer Syncer) {
 		pageToken := ""
 		for {
 
-			//req := svc.People.Connections.List("people/me").PersonFields("emailAddresses,names,phoneNumbers")
 			req := svc.People.Connections.List("people/me").PersonFields(personFields)
 			if pageToken != "" {
 				req.PageToken(pageToken)

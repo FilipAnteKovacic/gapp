@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -119,6 +120,21 @@ func HandleError(proc ServiceLog, status string, err error, save bool) {
 		proc.Msg = status + ":" + err.Error()
 		go SaveLog(proc)
 	}
+
+	return
+}
+
+// AppRedirect redirect on url
+func AppRedirect(w http.ResponseWriter, r *http.Request, route string, status int) {
+
+	http.Redirect(w, r, os.Getenv("APP_URL")+route, status)
+	return
+}
+
+// RemoveAllSessions remove users sessions
+func RemoveAllSessions(w http.ResponseWriter) {
+
+	ClearSession("session", w)
 
 	return
 }
