@@ -18,6 +18,6 @@ RUN go get google.golang.org/api/gmail/v1
 RUN go build
 RUN go install
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["app"]

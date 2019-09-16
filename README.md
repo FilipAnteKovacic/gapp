@@ -24,18 +24,17 @@ clone project
 * MONGO_CONN    - mongo connection string
 * MONGO_DB      - mongo database name
 * URL           - application url
-* APP_PORT      - application port
 * DEBUG         - print error in console
 
 #### GO RUN
 ```
-MONGO_CONN=localhost:27017 MONGO_DB=gmail URL=http://localhost:8080/ APP_PORT=8080 DEBUG=true go run *.go
+MONGO_CONN=localhost:27017 MONGO_DB=gmail URL=http://localhost:8080/ DEBUG=true go run *.go
 ```
 
 #### DOCKER RUN
 ```
 docker build -t gapp:v1 .
-docker run  -e "MONGO_CONN=localhost:27017" -e "MONGO_DB=gmail" -e "URL=http://localhost:8080/" -e "APP_PORT=8080" -e "DEBUG=true"  --name gapp gapp:v1
+docker run  -e "MONGO_CONN=localhost:27017" -e "MONGO_DB=gmail" -e "URL=http://localhost:8080/" -e "DEBUG=true"  --name gapp gapp:v1
 ```
 
 # Tasks

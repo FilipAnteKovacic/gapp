@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -48,7 +47,7 @@ func StartApp() {
 	// add static file prefix
 	muxRouter.PathPrefix("/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static/"))))
 
-	err := http.ListenAndServe(":"+os.Getenv("APP_PORT"), handlers.CompressHandler(muxRouter))
+	err := http.ListenAndServe(":8080", handlers.CompressHandler(muxRouter))
 	if err != nil {
 		log.Fatal("error starting http server :: ", err)
 		return
