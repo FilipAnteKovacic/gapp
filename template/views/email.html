@@ -161,31 +161,27 @@
 
                                     {{end}}
                                 </div>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td colspan="2">
 
                                 {{if $row.Attachments}}
 
-                                    <p class="mb20">Attachments:</p>
-                                    <div class="msg-attachments row">
-                                    
-                                    {{ range $akey, $arow := $row.Attachments }}
+                                    <div class="card card-body  m-2">
+                                        <p class="mb20">Attachments:</p>
+                                        <div class="msg-attachments row">
+                                        
+                                        {{ range $akey, $arow := $row.Attachments }}
 
-                                        <div class="col-md-2">
-                                            <a href="{{$url}}/attachment/{{ $arow.AttacID }}">
-                                            <div class="well well-sm p10">
-                                                <strong>{{ $arow.Name }}</strong>
+                                            <div class="col-md-2">
+                                                <a href="{{$url}}/attachment/{{ $arow.AttacID }}">
+                                                <div class="well well-sm p10">
+                                                    <strong>{{ $arow.Name }}</strong>
+                                                </div>
+                                                </a>
                                             </div>
-                                            </a>
+
+                                        {{ end }}
+
                                         </div>
-
-                                    {{ end }}
-
                                     </div>
-
                                 {{end}}
 
                             </td>
