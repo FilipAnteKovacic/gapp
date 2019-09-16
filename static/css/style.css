@@ -9,3 +9,11 @@
     vertical-align: middle;
     border-top: 1px solid #dee2e6;
 }
+
+.eHeader{
+    cursor:pointer
+}
+
+.eHeader:hover{
+    background-color: #dee2e6
+}

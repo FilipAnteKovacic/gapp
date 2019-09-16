@@ -45,4 +45,4 @@ docker run  -e "MONGO_CONN=localhost:27017" -e "MONGO_DB=gmail" -e "URL=http://l
 
 ## Single email view
 - [ ] Load message images
-- [ ] Threads collapse
+- [*] Threads collapse

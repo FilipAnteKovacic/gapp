@@ -120,11 +120,18 @@
 
                     {{ range $key, $row := .Messages }}
 
-                        <tr>
-                            <td>
+                        <tr 
+                            data-toggle="collapse" 
+                            href="#mCollapse{{ $key }}"  
+                            role="button" 
+                            aria-expanded="false" 
+                            aria-controls="mCollapse{{ $key }}"
+                            class="eHeader"
+                        >
+                            <td class="p-3">
                                 {{ $row.From }} <strong>to</strong> {{ $row.To }}
                             </td>
-                            <td class="text-right">
+                            <td class="text-right p-3">
                                 on 
                                 <em>
                                     {{ $row.Hours }}:{{ $row.Minutes }}
@@ -132,32 +139,33 @@
                                 </em>
                             </td>
                         </tr>
-                        <tr>
-                            <td colspan="2" class="p-3">
+                        <tr class="collapse multi-collapse" id="mCollapse{{ $key }}">
+                            <td colspan="2" class="p-0">
+                                <div class="card card-body  m-2">
 
-                                {{if $row.HTML}}
+                                    {{if $row.HTML}}
 
-                                    {{ $row.HTML }}
+                                        {{ $row.HTML }}
 
-                                {{else if $row.Text}}
+                                    {{else if $row.Text}}
 
-                                    <pre>
-                                        {{ $row.Text }}
-                                    </pre>
+                                        <pre>
+                                            {{ $row.Text }}
+                                        </pre>
 
-                                {{else if $row.Snippet}}
+                                    {{else if $row.Snippet}}
 
-                                    <p>
-                                        {{ $row.Snippet }}
-                                    </p>
+                                        <p>
+                                            {{ $row.Snippet }}
+                                        </p>
 
-                                {{end}}
-
+                                    {{end}}
+                                </div>
                             </td>
                         </tr>
 
                         <tr>
-                            <td colspan="2" class="p-3">
+                            <td colspan="2">
 
                                 {{if $row.Attachments}}
 
