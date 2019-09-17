@@ -777,15 +777,8 @@ func CRUDAttachment(attch Attachment, DBC *mgo.Session) {
 
 	}
 
-	/*
-		change := bson.M{"$set": attch}
-		err = mongoC.Update(queryCheck, change)
-		if err != nil {
-			HandleError(proc, "error while updateing row", err, true)
-			return
-		}
-		return
-	*/
+	return
+
 }
 
 // GetAttachment return attachment
