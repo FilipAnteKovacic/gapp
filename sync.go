@@ -102,6 +102,7 @@ func SyncGPeople(syncer Syncer) {
 	user := GetUserByEmail(syncer.Owner)
 	svc := GetPeopleService(user)
 
+	syncer.Status = "start"
 	if svc != nil {
 
 		syncer.Count = 0
@@ -147,14 +148,13 @@ func SyncGPeople(syncer Syncer) {
 					p.Phone = person.PhoneNumbers[0].CanonicalForm
 				}
 
+				syncer.Count++
 				CRUDContact(p, DBC)
 
 			}
 
 			pageToken = r.NextPageToken
 			syncer.LastPageToken = pageToken
-
-			syncer.Count++
 
 			CRUDSyncer(syncer, DBC)
 
@@ -167,7 +167,7 @@ func SyncGPeople(syncer Syncer) {
 	}
 
 	syncer.End = time.Now()
-
+	syncer.Status = "end"
 	CRUDSyncer(syncer, DBC)
 
 }
@@ -246,7 +246,7 @@ func SyncGLabels(syncer Syncer) {
 		}
 
 		syncer.End = time.Now()
-
+		syncer.Status = "end"
 		CRUDSyncer(syncer, DBC)
 
 	}
@@ -340,6 +340,7 @@ func SyncGMail(syncer Syncer) {
 		CRUDSyncer(syncer, DBC)
 
 	}
+	return
 
 }
 
@@ -665,6 +666,7 @@ func DailySync() {
 		defer DBC.Close()
 
 		unfinishedSyncers := GetUnfinishedSyncers()
+
 		if len(unfinishedSyncers) != 0 {
 
 			for _, sync := range unfinishedSyncers {
