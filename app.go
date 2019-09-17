@@ -44,7 +44,9 @@ type ServiceLog struct {
 	Name          string    `json:"name" bson:"name,omitempty"`
 	Start         time.Time `json:"start" bson:"start,omitempty"`
 	End           time.Time `json:"end" bson:"end,omitempty"`
-	Duration      int64     `json:"duration" bson:"duration,omitempty"`
+	Duration      string    `json:"duration" bson:"duration,omitempty"`
+	Seconds       float64   `json:"seconds" bson:"seconds,omitempty"`
+	Nanoseconds   int64     `json:"nanosec" bson:"nanosec,omitempty"`
 	Status        string    `json:"status" bson:"status,omitempty"`
 	Msg           string    `json:"msg" bson:"msg,omitempty"`
 	Loop          int       `json:"loop" bson:"loop,omitempty"`
@@ -68,7 +70,12 @@ func SaveLog(log ServiceLog) {
 	log.UniqueService = log.Type + "." + log.Service + "." + log.Name
 
 	log.End = time.Now()
-	log.Duration = log.End.Sub(log.Start).Nanoseconds()
+
+	dur := log.End.Sub(log.Start)
+
+	log.Duration = dur.String()
+	log.Seconds = dur.Seconds()
+	log.Nanoseconds = dur.Nanoseconds()
 
 	LogsDB := MongoSession()
 	defer LogsDB.Close()
