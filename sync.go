@@ -276,8 +276,6 @@ func SyncGMail(syncer Syncer) {
 
 	if svc != nil {
 
-		syncer.Count = 0
-
 		var lastFirstMsgDate string
 
 		//Gmail API page loop
