@@ -588,35 +588,37 @@ func ProcessPayload(msgID string, user User, p *gmail.MessagePart, svc *gmail.Se
 			attachmentSer := svc.Users.Messages.Attachments.Get(user.Email, msgID, p.Body.AttachmentId)
 
 			attachment, err := attachmentSer.Do()
-			if err != nil {
-				HandleError(proc, "Unable to retrieve attachment", err, true)
+			if err == nil {
+
+				ah := ParseMessageHeaders(p.Headers)
+
+				a := Attachment{
+					Owner:    user.Email,
+					MsgID:    mtread.MsgID,
+					ThreadID: mtread.ThreadID,
+					AttachID: p.Body.AttachmentId,
+					Filename: p.Filename,
+					MimeType: p.MimeType,
+					Headers:  ah,
+					Data:     attachment.Data,
+				}
+
+				if attachment.Size != 0 {
+					a.Size = attachment.Size
+				}
+
+				am := MessageAttachment{
+					Name:    p.Filename,
+					AttacID: a.AttachID,
+				}
+
+				mtread.Attachments = append(mtread.Attachments, am)
+
+				CRUDAttachment(a, DBC)
+
+			} else {
+				HandleError(proc, "Unable to retrieve attachment ID "+p.Body.AttachmentId+"from msgID:"+msgID, err, true)
 			}
-
-			ah := ParseMessageHeaders(p.Headers)
-
-			a := Attachment{
-				Owner:    user.Email,
-				MsgID:    mtread.MsgID,
-				ThreadID: mtread.ThreadID,
-				AttachID: p.Body.AttachmentId,
-				Filename: p.Filename,
-				MimeType: p.MimeType,
-				Headers:  ah,
-				Data:     attachment.Data,
-			}
-
-			if attachment.Size != 0 {
-				a.Size = attachment.Size
-			}
-
-			am := MessageAttachment{
-				Name:    p.Filename,
-				AttacID: a.AttachID,
-			}
-
-			mtread.Attachments = append(mtread.Attachments, am)
-
-			CRUDAttachment(a, DBC)
 
 		}
 
