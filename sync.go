@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"html/template"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -159,6 +158,11 @@ func SyncGPeople(syncer Syncer) {
 			CRUDSyncer(syncer, DBC)
 
 			if r.NextPageToken == "" {
+
+				r = nil
+				req = nil
+				svc = nil
+
 				break
 			}
 
@@ -169,6 +173,8 @@ func SyncGPeople(syncer Syncer) {
 	syncer.End = time.Now()
 	syncer.Status = "end"
 	CRUDSyncer(syncer, DBC)
+
+	return
 
 }
 
@@ -198,7 +204,7 @@ func SyncGLabels(syncer Syncer) {
 
 		r, err := req.Do()
 		if err != nil {
-			HandleError(proc, "Unable to retrieve threads", err, true)
+			HandleError(proc, "Unable to retrieve labels", err, true)
 			return
 		}
 
@@ -210,7 +216,7 @@ func SyncGLabels(syncer Syncer) {
 
 				lr, err := lreq.Do()
 				if err != nil {
-					HandleError(proc, "Unable to retrieve threads", err, true)
+					HandleError(proc, "Unable to retrieve labelID "+label.Id, err, true)
 					return
 				}
 
@@ -245,12 +251,17 @@ func SyncGLabels(syncer Syncer) {
 
 		}
 
+		r = nil
+		req = nil
+		svc = nil
+
 		syncer.End = time.Now()
 		syncer.Status = "end"
 		CRUDSyncer(syncer, DBC)
-
+		return
 	}
 
+	return
 }
 
 // SyncGMail use syncer struct to start sync from GMail api
@@ -325,6 +336,9 @@ func SyncGMail(syncer Syncer) {
 			CRUDSyncer(syncer, DBC)
 
 			if r.NextPageToken == "" {
+				r = nil
+				req = nil
+				svc = nil
 				break
 			}
 
@@ -336,7 +350,7 @@ func SyncGMail(syncer Syncer) {
 		syncer.Status = "end"
 
 		CRUDSyncer(syncer, DBC)
-
+		return
 	}
 	return
 
@@ -367,7 +381,7 @@ func ProccessGmailThread(user User, thread *gmail.Thread, deleteMsgs string, svc
 
 	thread, err := threadSer.Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve tread: %v", err)
+		HandleError(proc, "Unable to retrieve thread"+thread.Id, err, true)
 		wgi.Done()
 		return
 	}
@@ -537,8 +551,16 @@ func ProccessGmailThread(user User, thread *gmail.Thread, deleteMsgs string, svc
 
 		}
 
+		threadSer = nil
+		thread = nil
+
 		CRUDThread(t, DBC)
+		wgi.Done()
+		return
 	}
+
+	threadSer = nil
+	thread = nil
 
 	wgi.Done()
 	return
@@ -663,7 +685,6 @@ func DailySync() {
 	for {
 
 		DBC := MongoSession()
-		defer DBC.Close()
 
 		unfinishedSyncers := GetUnfinishedSyncers()
 
@@ -714,6 +735,8 @@ func DailySync() {
 
 			}
 		}
+
+		DBC.Close()
 
 		time.Sleep(24 * time.Hour)
 
