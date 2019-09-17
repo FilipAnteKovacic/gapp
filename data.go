@@ -60,7 +60,7 @@ func GetAllSyncers(user User) []Syncer {
 
 }
 
-// GetUnfinishedSyncers return all syncers created by user, type: daily
+// GetUnfinishedSyncers return all syncers that are not completed
 func GetUnfinishedSyncers() []Syncer {
 
 	proc := ServiceLog{
@@ -78,7 +78,7 @@ func GetUnfinishedSyncers() []Syncer {
 	DBC := DB.DB(os.Getenv("MONGO_DB")).C("syncers")
 	defer DB.Close()
 
-	err := DBC.Find(bson.M{"end": bson.M{"$exist": false}}).All(&gdata)
+	err := DBC.Find(bson.M{"status": bson.M{"$ne": "end"}}).All(&gdata)
 	if err != nil {
 		HandleError(proc, "get syncers", err, true)
 		return gdata
