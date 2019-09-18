@@ -8,12 +8,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// N global notifications for app
-var N = Notifications{
-	HaveNotfications: false,
-}
-
 func init() {
+
+	// if we crash the go code, we get the file name and line number
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	systemSession = SystemMongoSession()
 
 	go DailySync()
 

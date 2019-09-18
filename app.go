@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -11,29 +12,47 @@ import (
 
 	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gorilla/securecookie"
 )
 
+var systemSession *mgo.Session
+var syncSession *mgo.Session
 var mgoSession *mgo.Session
 
 // MongoSession generate mongo session
 func MongoSession() *mgo.Session {
 
-	proc := ServiceLog{
-		Start:   time.Now(),
-		Type:    "function",
-		Service: "loocpi_rates",
-		Name:    "mongoSession",
-	}
-
 	if mgoSession == nil {
 		var err error
 		mgoSession, err = mgo.Dial(os.Getenv("MONGO_CONN"))
 		if err != nil {
-			HandleError(proc, "Failed to start the Mongo session", err, true)
+			log.Fatalln("Failed to start the Mongo session: ", err)
 		}
 
 	}
 	return mgoSession.Clone()
+}
+
+// SystemMongoSession Generate active sessions for logs
+func SystemMongoSession() *mgo.Session {
+
+	var err error
+	systemSession, err = mgo.Dial(os.Getenv("MONGO_CONN"))
+	if err != nil {
+		log.Fatalln("Failed to start the Mongo session: ", err)
+	}
+	return systemSession.Clone()
+}
+
+// SyncMongoSession gen  sessions for syncers
+func SyncMongoSession() *mgo.Session {
+
+	var err error
+	syncSession, err = mgo.Dial(os.Getenv("MONGO_CONN"))
+	if err != nil {
+		log.Fatalln("Failed to start the Mongo session: ", err)
+	}
+	return syncSession.Clone()
 }
 
 //ServiceLog log structure
@@ -58,9 +77,9 @@ func SaveLog(log ServiceLog) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
-		Type:    "Function",
-		Service: "api",
-		Name:    "saveLog",
+		Type:    "function",
+		Service: "gapp",
+		Name:    "SaveLog",
 	}
 
 	if log.Status == "" {
@@ -77,17 +96,14 @@ func SaveLog(log ServiceLog) {
 	log.Seconds = dur.Seconds()
 	log.Nanoseconds = dur.Nanoseconds()
 
-	LogsDB := MongoSession()
-	defer LogsDB.Close()
-
-	TypeDBC := LogsDB.DB(os.Getenv("MONGO_DB")).C("_" + strings.ToLower(log.Type) + "Logs")
+	TypeDBC := systemSession.DB(os.Getenv("MONGO_DB")).C("_" + strings.ToLower(log.Type) + "Logs")
 	err := TypeDBC.Insert(log)
 
 	if err != nil {
 		HandleError(proc, "insert TypeDBC ", err, true)
 	}
 
-	TypeStatusDBC := LogsDB.DB(os.Getenv("MONGO_DB")).C("_statusLogs")
+	TypeStatusDBC := systemSession.DB(os.Getenv("MONGO_DB")).C("_statusLogs")
 
 	err = TypeStatusDBC.Update(bson.M{"uniqueService": log.UniqueService}, bson.M{"$set": log})
 	if err != nil {
@@ -131,6 +147,11 @@ func HandleError(proc ServiceLog, status string, err error, save bool) {
 	return
 }
 
+// N global notifications for app
+var N = Notifications{
+	HaveNotfications: false,
+}
+
 // AppRedirect redirect on url
 func AppRedirect(w http.ResponseWriter, r *http.Request, route string, status int) {
 
@@ -144,6 +165,108 @@ func RemoveAllSessions(w http.ResponseWriter) {
 	ClearSession("session", w)
 
 	return
+}
+
+//Cookie functions
+
+// cookieHandler
+var cookieHandler = securecookie.New(securecookie.GenerateRandomKey(64), securecookie.GenerateRandomKey(32))
+
+// SetSession set session
+func SetSession(id string, r http.ResponseWriter) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "function",
+		Service: "gapp",
+		Name:    "SetSession",
+	}
+
+	defer SaveLog(proc)
+
+	value := map[string]string{
+		"uid": id,
+	}
+
+	encoded, err := cookieHandler.Encode("session", value)
+	if err != nil {
+		HandleError(proc, "cookie encode error:", err, true)
+		return
+	}
+
+	cookie := &http.Cookie{
+		Name:  "session",
+		Value: encoded,
+		Path:  "/",
+	}
+
+	http.SetCookie(r, cookie)
+	return
+}
+
+// ClearSession clear session
+func ClearSession(name string, r http.ResponseWriter) {
+
+	cookie := &http.Cookie{
+		Name:   name,
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	}
+
+	http.SetCookie(r, cookie)
+	return
+}
+
+// CookieValid check if valid cookie
+func CookieValid(r *http.Request) string {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "function",
+		Service: "gapp",
+		Name:    "CookieValid",
+	}
+
+	defer SaveLog(proc)
+
+	cookie, err := r.Cookie("session")
+
+	if err != nil {
+		HandleError(proc, "cookie read session error: ", err, true)
+		return ""
+	}
+
+	cookieValue := make(map[string]string)
+	err = cookieHandler.Decode("session", cookie.Value, &cookieValue)
+	if err != nil {
+		HandleError(proc, "cookie decode session error: ", err, true)
+		return ""
+	}
+
+	return cookieValue["uid"]
+
+}
+
+// CheckAuth check if session exist
+// c - if page is public set true
+func CheckAuth(w http.ResponseWriter, r *http.Request, c bool, route string) bool {
+
+	cookieExist := CookieValid(r)
+
+	if c == true && cookieExist != "" && r.URL.String() != route {
+
+		AppRedirect(w, r, route, 302)
+		return true
+	}
+
+	if c == false && cookieExist == "" && r.URL.String() != route {
+
+		AppRedirect(w, r, route, 302)
+		return true
+	}
+
+	return false
 }
 
 // InArray check if exist in array

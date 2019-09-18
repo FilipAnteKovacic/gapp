@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gorilla/mux"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -114,7 +115,7 @@ type EPage struct {
 	Stats    GStats
 	Labels   map[string][]Label
 	Thread   Thread
-	Messages []ThreadMessage
+	Messages []Message
 }
 
 // GPagging stats
@@ -123,6 +124,164 @@ type GPagging struct {
 	MaxCount     int
 	NextPage     int
 	PreviousPage int
+}
+
+// GStats email owner quick stats
+type GStats struct {
+	Labels      int
+	Threads     int
+	Messages    int
+	Attachments int
+}
+
+// MailsController handle other requests
+var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "controller",
+		Service: "gapp",
+		Name:    "MailsController",
+	}
+
+	defer SaveLog(proc)
+
+	redirect := CheckAuth(w, r, false, "/login")
+
+	if !redirect {
+
+		user := GetUser(CookieValid(r))
+		stats := GetGMailsStats(user)
+		firstLabel, labelsList := GetLabelsList(user)
+		labelsByType := GetLabelsByType(user)
+
+		s := ESearch{
+			Query:   r.FormValue("search[query]"),
+			From:    r.FormValue("search[from]"),
+			To:      r.FormValue("search[to]"),
+			Subject: r.FormValue("search[subject]"),
+			Text:    r.FormValue("search[text]"),
+		}
+
+		label := ""
+		label = r.FormValue("label")
+		if label == "" {
+
+			if firstLabel != "" && s.Query == "" {
+				label = firstLabel
+			}
+
+		}
+
+		page := r.FormValue("page")
+
+		if page == "" {
+			page = "0"
+		}
+
+		pg, _ := strconv.Atoi(page)
+
+		gp := GPagging{
+			MinCount:     pg * 50,
+			MaxCount:     (pg * 50) + 50,
+			NextPage:     (pg + 1),
+			PreviousPage: (pg - 1),
+		}
+
+		gcount, emails := GetThreads(user, label, pg, s)
+
+		p := EsPage{
+			Name:      "Emails",
+			View:      "emails",
+			URL:       os.Getenv("URL"),
+			User:      user,
+			Search:    s,
+			Label:     label,
+			Labels:    labelsByType,
+			Emails:    emails,
+			Count:     gcount,
+			Paggining: gp,
+			Stats:     stats,
+		}
+
+		if val, ok := labelsList[label]; ok {
+			p.LabelName = val
+		}
+
+		parsedTemplate, err := template.ParseFiles(
+			"template/index.html",
+			"template/header.html",
+			"template/views/"+p.View+".html",
+		)
+
+		if err != nil {
+			log.Println("Error ParseFiles: "+p.View, err)
+			return
+		}
+
+		err = parsedTemplate.Execute(w, p)
+
+		if err != nil {
+			log.Println("Error Execute:", err)
+			return
+		}
+
+	}
+
+})
+
+// GetGMailsStats return gmail stats
+func GetGMailsStats(user User) GStats {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "function",
+		Service: "gapp",
+		Name:    "GetGMailsStats",
+	}
+
+	defer SaveLog(proc)
+
+	var err error
+	var stats GStats
+
+	DB := MongoSession()
+	defer DB.Close()
+
+	DBCT := DB.DB(os.Getenv("MONGO_DB")).C("threads")
+
+	stats.Threads, err = DBCT.Find(bson.M{"owner": user.Email}).Count()
+	if err != nil {
+		HandleError(proc, "get threads count", err, false)
+		return stats
+	}
+
+	DBCM := DB.DB(os.Getenv("MONGO_DB")).C("messages")
+
+	stats.Messages, err = DBCM.Find(bson.M{"owner": user.Email}).Count()
+	if err != nil {
+		HandleError(proc, "get messages counts", err, false)
+		return stats
+	}
+
+	DBCA := DB.DB(os.Getenv("MONGO_DB")).C("attachments")
+
+	stats.Attachments, err = DBCA.Find(bson.M{"owner": user.Email}).Count()
+	if err != nil {
+		HandleError(proc, "get attachments counts", err, false)
+		return stats
+	}
+
+	DBCL := DB.DB(os.Getenv("MONGO_DB")).C("labels")
+
+	stats.Labels, err = DBCL.Find(bson.M{"owner": user.Email}).Count()
+	if err != nil {
+		HandleError(proc, "get labels count", err, false)
+		return stats
+	}
+
+	return stats
+
 }
 
 // MailController handle other requests
@@ -241,102 +400,6 @@ var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 
 })
 
-// MailsController handle other requests
-var MailsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-	proc := ServiceLog{
-		Start:   time.Now(),
-		Type:    "controller",
-		Service: "gapp",
-		Name:    "MailsController",
-	}
-
-	defer SaveLog(proc)
-
-	redirect := CheckAuth(w, r, false, "/login")
-
-	if !redirect {
-
-		user := GetUser(CookieValid(r))
-		stats := GetGMailsStats(user)
-		firstLabel, labelsList := GetLabelsList(user)
-		labelsByType := GetLabelsByType(user)
-
-		s := ESearch{
-			Query:   r.FormValue("search[query]"),
-			From:    r.FormValue("search[from]"),
-			To:      r.FormValue("search[to]"),
-			Subject: r.FormValue("search[subject]"),
-			Text:    r.FormValue("search[text]"),
-		}
-
-		label := ""
-		label = r.FormValue("label")
-		if label == "" {
-
-			if firstLabel != "" && s.Query == "" {
-				label = firstLabel
-			}
-
-		}
-
-		page := r.FormValue("page")
-
-		if page == "" {
-			page = "0"
-		}
-
-		pg, _ := strconv.Atoi(page)
-
-		gp := GPagging{
-			MinCount:     pg * 50,
-			MaxCount:     (pg * 50) + 50,
-			NextPage:     (pg + 1),
-			PreviousPage: (pg - 1),
-		}
-
-		gcount, emails := GetThreads(user, label, pg, s)
-
-		p := EsPage{
-			Name:      "Emails",
-			View:      "emails",
-			URL:       os.Getenv("URL"),
-			User:      user,
-			Search:    s,
-			Label:     label,
-			Labels:    labelsByType,
-			Emails:    emails,
-			Count:     gcount,
-			Paggining: gp,
-			Stats:     stats,
-		}
-
-		if val, ok := labelsList[label]; ok {
-			p.LabelName = val
-		}
-
-		parsedTemplate, err := template.ParseFiles(
-			"template/index.html",
-			"template/header.html",
-			"template/views/"+p.View+".html",
-		)
-
-		if err != nil {
-			log.Println("Error ParseFiles: "+p.View, err)
-			return
-		}
-
-		err = parsedTemplate.Execute(w, p)
-
-		if err != nil {
-			log.Println("Error Execute:", err)
-			return
-		}
-
-	}
-
-})
-
 // ContactsController handle token requests
 var ContactsController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -405,8 +468,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 		if r.Method == "POST" {
 
-			DBC := MongoSession()
-			defer DBC.Close()
+			syncSession = SyncMongoSession()
 
 			if r.FormValue("labels") != "" && u.Token != nil {
 
@@ -419,7 +481,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				}
 
 				// init save syncer
-				CRUDSyncer(s, DBC)
+				CRUDSyncer(s)
 
 				go SyncGLabels(s)
 
@@ -436,7 +498,7 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				}
 
 				// init save syncer
-				CRUDSyncer(s, DBC)
+				CRUDSyncer(s)
 
 				go SyncGPeople(s)
 
@@ -459,28 +521,12 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				}
 
 				// init save syncer
-				CRUDSyncer(s, DBC)
+				CRUDSyncer(s)
 
 				go SyncGMail(s)
 
 			}
-			/*
-				if r.FormValue("password") != "" {
 
-					// URL vars
-					pass := r.FormValue("password")
-
-					tok, err := u.Config.PasswordCredentialsToken(oauth2.NoContext, u.Email, pass)
-					if err != nil {
-						log.Fatalf("Unable to retrieve token from web: %v", err)
-					}
-
-					u.Token = tok
-
-					UpdateUser(u.ID.Hex(), u)
-
-				}
-			*/
 			if r.FormValue("cred") != "" {
 
 				// Parse our multipart form, 10 << 20 specifies a maximum
