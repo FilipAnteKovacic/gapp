@@ -11,7 +11,6 @@ import (
 	"time"
 
 	mgo "github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gorilla/securecookie"
 )
 
@@ -103,19 +102,6 @@ func SaveLog(log ServiceLog) {
 		HandleError(proc, "insert TypeDBC ", err, true)
 	}
 
-	TypeStatusDBC := systemSession.DB(os.Getenv("MONGO_DB")).C("_statusLogs")
-
-	err = TypeStatusDBC.Update(bson.M{"uniqueService": log.UniqueService}, bson.M{"$set": log})
-	if err != nil {
-		HandleError(proc, "update TypeStatusDBC ", err, true)
-
-		err = TypeStatusDBC.Insert(log)
-		if err != nil {
-			HandleError(proc, "insert TypeStatusDBC ", err, true)
-			return
-		}
-		return
-	}
 	return
 
 }

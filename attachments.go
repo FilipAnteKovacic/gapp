@@ -125,7 +125,7 @@ func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, use
 		Start:   time.Now(),
 		Type:    "function",
 		Service: "gapp",
-		Name:    "ProccessAGetAttachmentsDetailsttachments",
+		Name:    "GetAttachmentsDetails",
 	}
 
 	defer SaveLog(proc)
@@ -140,9 +140,7 @@ func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, use
 		Headers:  att.Headers,
 	}
 
-	attachmentSer := svc.Users.Messages.Attachments.Get(a.Owner, a.MsgID, a.AttachID)
-
-	attachment, err := attachmentSer.Do()
+	attachment, err := svc.Users.Messages.Attachments.Get(a.Owner, a.MsgID, a.AttachID).Do()
 
 	if err != nil {
 
@@ -150,9 +148,7 @@ func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, use
 
 			time.Sleep(1 * time.Second)
 
-			attachmentSer = svc.Users.Messages.Attachments.Get(a.Owner, a.MsgID, a.AttachID)
-
-			attachment, err = attachmentSer.Do()
+			attachment, err = svc.Users.Messages.Attachments.Get(a.Owner, a.MsgID, a.AttachID).Do()
 			if err != nil {
 
 				HandleError(proc, "Unable to retrieve attachment ID "+a.AttachID+"from msgID:"+a.MsgID, err, true)
@@ -213,7 +209,7 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 		for _, att := range attach {
 
-			time.Sleep(200 * time.Nanosecond)
+			time.Sleep(100000 * time.Nanosecond)
 			wgAttach.Add(1)
 			go GetAttachmentsDetails(&attachments, att, user, svc, &wgAttach)
 

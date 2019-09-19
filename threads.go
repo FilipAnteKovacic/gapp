@@ -389,6 +389,12 @@ func SyncGMail(syncer Syncer) {
 			// Save syncer
 			CRUDSyncer(syncer)
 
+			threads = nil
+			messages = nil
+			rawMessages = nil
+			attachments = nil
+			attachmentsList = nil
+
 			// Reset
 			if threadsService.NextPageToken == "" {
 				threadsService = nil
@@ -443,9 +449,7 @@ func GetThreadsDetails(threadsList *[]gmail.Thread, tID string, svc *gmail.Servi
 	defer SaveLog(proc)
 
 	// Get thread details
-	threadSer := svc.Users.Threads.Get(user.Email, tID)
-
-	thread, err := threadSer.Do()
+	thread, err := svc.Users.Threads.Get(user.Email, tID).Do()
 
 	if err != nil {
 
@@ -454,9 +458,7 @@ func GetThreadsDetails(threadsList *[]gmail.Thread, tID string, svc *gmail.Servi
 			time.Sleep(1 * time.Second)
 
 			// Get thread details
-			threadSer := svc.Users.Threads.Get(user.Email, tID)
-
-			thread, err := threadSer.Do()
+			thread, err := svc.Users.Threads.Get(user.Email, tID).Do()
 
 			if err != nil {
 
@@ -502,8 +504,9 @@ func SaveThreads(threads []Thread) {
 			go CRUDThread(t, &wgThread)
 		}
 		wgThread.Wait()
+		return
 	}
-
+	return
 }
 
 //ProccessThreads standard threads

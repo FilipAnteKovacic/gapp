@@ -14,14 +14,15 @@ func RefreshToken(user *User) {
 	if user.Token.Expiry.Add(2*time.Hour).Format("2006-01-02T15:04:05") < time.Now().Format("2006-01-02T15:04:05") {
 
 		tokenSource := user.Config.TokenSource(oauth2.NoContext, user.Token)
-		sourceToken := oauth2.ReuseTokenSource(nil, tokenSource)
-		newToken, _ := sourceToken.Token()
+		newToken, _ := oauth2.ReuseTokenSource(nil, tokenSource).Token()
 
 		if newToken.AccessToken != user.Token.AccessToken {
 			user.Token = newToken
 			UpdateUser(user.ID.Hex(), *user)
 		}
+		return
 	}
+	return
 
 }
 
@@ -39,8 +40,9 @@ func GetGmailService(user User) *gmail.Service {
 	RefreshToken(&user)
 
 	// get client for using Gmail API
-	client := user.Config.Client(oauth2.NoContext, user.Token)
-	svc, err := gmail.New(client)
+	svc, err := gmail.New(
+		user.Config.Client(oauth2.NoContext, user.Token),
+	)
 	if err != nil {
 		HandleError(proc, "Unable to create Gmail service", err, true)
 		return nil
@@ -64,8 +66,9 @@ func GetPeopleService(user User) *people.Service {
 	RefreshToken(&user)
 
 	// get client for using Gmail API
-	client := user.Config.Client(oauth2.NoContext, user.Token)
-	svc, err := people.New(client)
+	svc, err := people.New(
+		user.Config.Client(oauth2.NoContext, user.Token),
+	)
 	if err != nil {
 		HandleError(proc, "Unable to create Gmail service", err, true)
 		return nil

@@ -75,8 +75,9 @@ func SaveMessages(messages []Message) {
 			go CRUDThreadMessage(m, &wgMessages)
 		}
 		wgMessages.Wait()
+		return
 	}
-
+	return
 }
 
 // CRUDThreadMessage save messages for view
@@ -156,7 +157,9 @@ func SaveRawMessages(messages []RawMessage) {
 			go CRUDRawMessage(m, &wgMessages)
 		}
 		wgMessages.Wait()
+		return
 	}
+	return
 
 }
 
