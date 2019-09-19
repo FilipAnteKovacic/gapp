@@ -198,7 +198,6 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 			if rateLimit {
 				break
-				return attachments, rateLimit
 			}
 
 		}
