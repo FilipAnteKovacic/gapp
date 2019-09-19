@@ -9,20 +9,21 @@ import (
 
 // Syncer struct for sync queries
 type Syncer struct {
-	ID               bson.ObjectId `json:"id" bson:"_id,omitempty"`
-	CreatedBy        string        `json:"createdBy" bson:"createdBy,omitempty"`
-	Owner            string        `json:"owner" bson:"owner,omitempty"`
-	Query            string        `json:"query" bson:"query,omitempty"`
-	Type             string        `json:"type" bson:"type,omitempty"`
-	DeleteEmail      string        `json:"deleteEmail" bson:"deleteEmail,omitempty"`
-	Start            time.Time     `json:"start" bson:"start,omitempty"`
-	End              time.Time     `json:"end" bson:"end,omitempty"`
-	Duration         string        `json:"duration" bson:"duration,omitempty"`
-	Count            int           `json:"count" bson:"count,omitempty"`
-	LastPageToken    string        `json:"lastPageToken" bson:"lastPageToken,omitempty"`
-	NextPageToken    string        `json:"nextPageToken" bson:"nextPageToken,omitempty"`
-	LastFirstMsgDate string        `json:"lastFirstMsgDate" bson:"lastFirstMsgDate,omitempty"`
-	Status           string        `json:"status" bson:"status,omitempty"`
+	ID            bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	CreatedBy     string        `json:"createdBy" bson:"createdBy,omitempty"`
+	Owner         string        `json:"owner" bson:"owner,omitempty"`
+	Query         string        `json:"query" bson:"query,omitempty"`
+	Type          string        `json:"type" bson:"type,omitempty"`
+	DeleteEmail   string        `json:"deleteEmail" bson:"deleteEmail,omitempty"`
+	Start         time.Time     `json:"start" bson:"start,omitempty"`
+	End           time.Time     `json:"end" bson:"end,omitempty"`
+	Duration      string        `json:"duration" bson:"duration,omitempty"`
+	Count         int           `json:"count" bson:"count,omitempty"`
+	LastPageToken string        `json:"lastPageToken" bson:"lastPageToken,omitempty"`
+	NextPageToken string        `json:"nextPageToken" bson:"nextPageToken,omitempty"`
+	FirstMsgDate  string        `json:"firstMsgDate" bson:"firstMsgDate,omitempty"`
+	LastMsgDate   string        `json:"lastMsgDate" bson:"lastMsgDate,omitempty"`
+	Status        string        `json:"status" bson:"status,omitempty"`
 }
 
 // GetAllSyncers return all syncers by user
@@ -213,18 +214,18 @@ func DailySync() {
 					sync = lastSystemSync
 				}
 
-				afterDate, _ := time.Parse("2006-01-02", sync.LastFirstMsgDate)
+				afterDate, _ := time.Parse("2006-01-02", sync.FirstMsgDate)
 
 				query := "after:" + afterDate.Format("2006/01/02") + " before:" + afterDate.AddDate(0, 0, 1).Format("2006/01/02")
 
 				s := Syncer{
-					CreatedBy:        "system",
-					Owner:            sync.Owner,
-					Query:            query,
-					Type:             initSyncID,
-					DeleteEmail:      sync.DeleteEmail,
-					Start:            time.Now(),
-					LastFirstMsgDate: afterDate.AddDate(0, 0, 1).Format("2006-01-02"),
+					CreatedBy:    "system",
+					Owner:        sync.Owner,
+					Query:        query,
+					Type:         initSyncID,
+					DeleteEmail:  sync.DeleteEmail,
+					Start:        time.Now(),
+					FirstMsgDate: afterDate.AddDate(0, 0, 1).Format("2006-01-02"),
 				}
 
 				// init save syncer

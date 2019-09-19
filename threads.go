@@ -298,8 +298,6 @@ func SyncGMail(syncer Syncer) {
 
 	if svc != nil {
 
-		var lastFirstMsgDate string
-
 		//Gmail API page loop
 		pageToken := ""
 
@@ -343,7 +341,7 @@ func SyncGMail(syncer Syncer) {
 			}
 
 			// Proccess threads
-			threads, messages, rawMessages, attachmentsList := ProccessThreads(threadsList, user)
+			threads, messages, rawMessages, attachmentsList, lastDate, firstDate := ProccessThreads(threadsList, user)
 
 			syncer.Count = syncer.Count + len(threads)
 
@@ -381,7 +379,21 @@ func SyncGMail(syncer Syncer) {
 
 			// CHECKKECKEKCE
 			if syncer.CreatedBy == "user" {
-				syncer.LastFirstMsgDate = lastFirstMsgDate
+
+				if syncer.FirstMsgDate == "" {
+
+					syncer.FirstMsgDate = firstDate
+
+				} else if firstDate > syncer.FirstMsgDate {
+					syncer.FirstMsgDate = firstDate
+				}
+
+				if syncer.LastMsgDate == "" {
+					syncer.LastMsgDate = lastDate
+				} else if lastDate > syncer.LastMsgDate {
+					syncer.LastMsgDate = lastDate
+				}
+
 			}
 
 			// Save syncer
@@ -484,7 +496,7 @@ func SaveThreads(threads []Thread) {
 }
 
 //ProccessThreads standard threads
-func ProccessThreads(threads []gmail.Thread, user User) ([]Thread, []Message, []RawMessage, []MessageAttachment) {
+func ProccessThreads(threads []gmail.Thread, user User) ([]Thread, []Message, []RawMessage, []MessageAttachment, string, string) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -494,6 +506,9 @@ func ProccessThreads(threads []gmail.Thread, user User) ([]Thread, []Message, []
 	}
 
 	defer SaveLog(proc)
+
+	var lastMsg string
+	var firstMsg string
 
 	var threadsList []Thread
 	var msgList []Message
@@ -565,11 +580,23 @@ func ProccessThreads(threads []gmail.Thread, user User) ([]Thread, []Message, []
 				}
 			}
 
+			if lastMsg == "" {
+				lastMsg = t.LastMsgDate
+			} else if lastMsg > t.LastMsgDate {
+				lastMsg = t.LastMsgDate
+			}
+
+			if firstMsg == "" {
+				firstMsg = t.FirstMsgDate
+			} else if firstMsg < t.FirstMsgDate {
+				firstMsg = t.FirstMsgDate
+			}
+
 			threadsList = append(threadsList, t)
 
 		}
 
 	}
 
-	return threadsList, msgList, rawMsgList, attachList
+	return threadsList, msgList, rawMsgList, attachList, lastMsg, lastMsg
 }
