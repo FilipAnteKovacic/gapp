@@ -66,7 +66,7 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 			}
 
 			gridFile.SetContentType(attch.ContentType)
-			gridFile.SetChunkSize(1024)
+			gridFile.SetChunkSize(5120)
 
 			attch.GridID = (gridFile.Id().(bson.ObjectId))
 
@@ -79,7 +79,7 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 			reader := bytes.NewReader(decoded)
 
 			// make a buffer to keep chunks that are read
-			buf := make([]byte, 1024)
+			buf := make([]byte, 5120)
 			for {
 				// read a chunk
 				n, err := reader.Read(buf)
@@ -144,27 +144,24 @@ func GetAttachmentsDetails(attachments *[]Attachment, rateLimit *bool, att Messa
 	attachmentSer := svc.Users.Messages.Attachments.Get(a.Owner, a.MsgID, a.AttachID)
 
 	attachment, err := attachmentSer.Do()
-	if strings.Contains("rateLimitExceeded", err.Error()) {
-		*rateLimit = true
+
+	if err != nil {
+
+		if strings.Contains("rateLimitExceeded", err.Error()) {
+			*rateLimit = true
+			wgi.Done()
+		}
+
+		HandleError(proc, "Unable to retrieve attachment ID "+a.AttachID+"from msgID:"+a.MsgID, err, true)
 		wgi.Done()
 	}
 
-	if err == nil {
+	if attachment.Size != 0 {
+		a.Size = attachment.Size
+	}
 
-		if attachment.Size != 0 {
-
-			a.Size = attachment.Size
-
-		}
-
-		if attachment.Data != "" {
-			a.Data = attachment.Data
-		}
-
-	} else {
-
-		HandleError(proc, "Unable to retrieve attachment ID "+a.AttachID+"from msgID:"+a.MsgID, err, true)
-
+	if attachment.Data != "" {
+		a.Data = attachment.Data
 	}
 
 	(*attachments) = append((*attachments), a)

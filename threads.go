@@ -445,13 +445,15 @@ func GetThreadsDetails(threadsList *[]gmail.Thread, rateLimit *bool, tID string,
 
 	thread, err := threadSer.Do()
 
-	if strings.Contains("rateLimitExceeded", err.Error()) {
-		*rateLimit = true
-		wgi.Done()
-	}
-
 	if err != nil {
+
+		if strings.Contains("rateLimitExceeded", err.Error()) {
+			*rateLimit = true
+			wgi.Done()
+		}
+
 		HandleError(proc, "Unable to retrieve thread"+tID, err, true)
+		wgi.Done()
 	}
 
 	(*threadsList) = append((*threadsList), *thread)
