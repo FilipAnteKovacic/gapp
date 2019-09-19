@@ -147,12 +147,42 @@ func GetAttachmentsDetails(attachments *[]Attachment, rateLimit *bool, att Messa
 	if err != nil {
 
 		if strings.Contains("rateLimitExceeded", err.Error()) {
-			*rateLimit = true
+
+			time.Sleep(1 * time.Second)
+
+			attachmentSer = svc.Users.Messages.Attachments.Get(a.Owner, a.MsgID, a.AttachID)
+
+			attachment, err = attachmentSer.Do()
+			if err != nil {
+
+				if strings.Contains("rateLimitExceeded", err.Error()) {
+					*rateLimit = true
+					wgi.Done()
+					return
+				}
+
+				HandleError(proc, "Unable to retrieve attachment ID "+a.AttachID+"from msgID:"+a.MsgID, err, true)
+				wgi.Done()
+				return
+
+			}
+
+			if attachment.Size != 0 {
+				a.Size = attachment.Size
+			}
+
+			if attachment.Data != "" {
+				a.Data = attachment.Data
+			}
+
+			(*attachments) = append((*attachments), a)
 			wgi.Done()
+			return
 		}
 
 		HandleError(proc, "Unable to retrieve attachment ID "+a.AttachID+"from msgID:"+a.MsgID, err, true)
 		wgi.Done()
+		return
 	}
 
 	if attachment.Size != 0 {
@@ -165,6 +195,8 @@ func GetAttachmentsDetails(attachments *[]Attachment, rateLimit *bool, att Messa
 
 	(*attachments) = append((*attachments), a)
 	wgi.Done()
+	return
+
 }
 
 // ProccessAttachments get attachment data

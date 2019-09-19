@@ -464,16 +464,43 @@ func GetThreadsDetails(threadsList *[]gmail.Thread, rateLimit *bool, tID string,
 	if err != nil {
 
 		if strings.Contains("rateLimitExceeded", err.Error()) {
-			*rateLimit = true
+
+			time.Sleep(1 * time.Second)
+
+			// Get thread details
+			threadSer := svc.Users.Threads.Get(user.Email, tID)
+
+			thread, err := threadSer.Do()
+
+			if err != nil {
+
+				if strings.Contains("rateLimitExceeded", err.Error()) {
+					*rateLimit = true
+					wgi.Done()
+					return
+				}
+
+				HandleError(proc, "Unable to retrieve thread"+tID, err, true)
+				wgi.Done()
+				return
+
+			}
+
+			(*threadsList) = append((*threadsList), *thread)
 			wgi.Done()
+			return
+
 		}
 
 		HandleError(proc, "Unable to retrieve thread"+tID, err, true)
 		wgi.Done()
+		return
 	}
 
 	(*threadsList) = append((*threadsList), *thread)
 	wgi.Done()
+	return
+
 }
 
 // SaveThreads save threads
