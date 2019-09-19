@@ -209,7 +209,7 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 		for _, att := range attach {
 
-			time.Sleep(100000 * time.Nanosecond)
+			time.Sleep((1 * time.Second) / 10)
 			wgAttach.Add(1)
 			go GetAttachmentsDetails(&attachments, att, user, svc, &wgAttach)
 
