@@ -322,23 +322,15 @@ func SyncGMail(syncer Syncer) {
 
 			var threadsList []gmail.Thread
 
-			rateLimitThreads := false
-
 			var wgThread sync.WaitGroup
 			for _, t := range threadsService.Threads {
 
 				wgThread.Add(1)
 
-				go GetThreadsDetails(&threadsList, &rateLimitThreads, t.Id, svc, user, &wgThread)
+				go GetThreadsDetails(&threadsList, t.Id, svc, user, &wgThread)
 
 			}
 			wgThread.Wait()
-
-			if rateLimitThreads {
-				threadsService = nil
-				svc = nil
-				break
-			}
 
 			// Proccess threads
 			threads, messages, rawMessages, attachmentsList, firstDate, lastDate := ProccessThreads(threadsList, user)
@@ -355,13 +347,7 @@ func SyncGMail(syncer Syncer) {
 			SaveRawMessages(rawMessages)
 
 			// Proccess attachments
-			attachments, rateLimit := ProccessAttachments(svc, user, attachmentsList)
-
-			if rateLimit {
-				threadsService = nil
-				svc = nil
-				break
-			}
+			attachments := ProccessAttachments(svc, user, attachmentsList)
 
 			// Save attachemts
 			SaveAttachments(attachments)
@@ -445,7 +431,7 @@ func GetThreadListService(svc *gmail.Service, user User, syncer Syncer, pageToke
 }
 
 // GetThreadsDetails get threads details from api
-func GetThreadsDetails(threadsList *[]gmail.Thread, rateLimit *bool, tID string, svc *gmail.Service, user User, wgi *sync.WaitGroup) {
+func GetThreadsDetails(threadsList *[]gmail.Thread, tID string, svc *gmail.Service, user User, wgi *sync.WaitGroup) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -473,12 +459,6 @@ func GetThreadsDetails(threadsList *[]gmail.Thread, rateLimit *bool, tID string,
 			thread, err := threadSer.Do()
 
 			if err != nil {
-
-				if strings.Contains("rateLimitExceeded", err.Error()) {
-					*rateLimit = true
-					wgi.Done()
-					return
-				}
 
 				HandleError(proc, "Unable to retrieve thread"+tID, err, true)
 				wgi.Done()

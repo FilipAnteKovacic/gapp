@@ -119,7 +119,7 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 }
 
 // GetAttachmentsDetails from api
-func GetAttachmentsDetails(attachments *[]Attachment, rateLimit *bool, att MessageAttachment, user User, svc *gmail.Service, wgi *sync.WaitGroup) {
+func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, user User, svc *gmail.Service, wgi *sync.WaitGroup) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -154,12 +154,6 @@ func GetAttachmentsDetails(attachments *[]Attachment, rateLimit *bool, att Messa
 
 			attachment, err = attachmentSer.Do()
 			if err != nil {
-
-				if strings.Contains("rateLimitExceeded", err.Error()) {
-					*rateLimit = true
-					wgi.Done()
-					return
-				}
 
 				HandleError(proc, "Unable to retrieve attachment ID "+a.AttachID+"from msgID:"+a.MsgID, err, true)
 				wgi.Done()
@@ -200,7 +194,7 @@ func GetAttachmentsDetails(attachments *[]Attachment, rateLimit *bool, att Messa
 }
 
 // ProccessAttachments get attachment data
-func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachment) ([]Attachment, bool) {
+func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachment) []Attachment {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -215,19 +209,13 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 	var wgAttach sync.WaitGroup
 
-	rateLimit := false
-
 	if len(attach) != 0 {
 
 		for _, att := range attach {
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(200 * time.Nanosecond)
 			wgAttach.Add(1)
-			go GetAttachmentsDetails(&attachments, &rateLimit, att, user, svc, &wgAttach)
-
-			if rateLimit {
-				break
-			}
+			go GetAttachmentsDetails(&attachments, att, user, svc, &wgAttach)
 
 		}
 
@@ -235,7 +223,7 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 	wgAttach.Wait()
 
-	return attachments, rateLimit
+	return attachments
 }
 
 // SaveAttachments save attachments
