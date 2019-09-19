@@ -341,7 +341,7 @@ func SyncGMail(syncer Syncer) {
 			}
 
 			// Proccess threads
-			threads, messages, rawMessages, attachmentsList, lastDate, firstDate := ProccessThreads(threadsList, user)
+			threads, messages, rawMessages, attachmentsList, firstDate, lastDate := ProccessThreads(threadsList, user)
 
 			syncer.Count = syncer.Count + len(threads)
 
@@ -384,13 +384,17 @@ func SyncGMail(syncer Syncer) {
 
 					syncer.FirstMsgDate = firstDate
 
-				} else if firstDate > syncer.FirstMsgDate {
+				}
+
+				if syncer.FirstMsgDate < firstDate {
 					syncer.FirstMsgDate = firstDate
 				}
 
 				if syncer.LastMsgDate == "" {
 					syncer.LastMsgDate = lastDate
-				} else if lastDate > syncer.LastMsgDate {
+				}
+
+				if syncer.LastMsgDate > lastDate {
 					syncer.LastMsgDate = lastDate
 				}
 
@@ -580,16 +584,20 @@ func ProccessThreads(threads []gmail.Thread, user User) ([]Thread, []Message, []
 				}
 			}
 
+			if firstMsg == "" {
+				firstMsg = t.FirstMsgDate
+			}
+
+			if firstMsg < t.FirstMsgDate {
+				firstMsg = t.FirstMsgDate
+			}
+
 			if lastMsg == "" {
-				lastMsg = t.LastMsgDate
-			} else if lastMsg > t.LastMsgDate {
 				lastMsg = t.LastMsgDate
 			}
 
-			if firstMsg == "" {
-				firstMsg = t.FirstMsgDate
-			} else if firstMsg < t.FirstMsgDate {
-				firstMsg = t.FirstMsgDate
+			if lastMsg > t.LastMsgDate {
+				lastMsg = t.LastMsgDate
 			}
 
 			threadsList = append(threadsList, t)
@@ -598,5 +606,5 @@ func ProccessThreads(threads []gmail.Thread, user User) ([]Thread, []Message, []
 
 	}
 
-	return threadsList, msgList, rawMsgList, attachList, lastMsg, lastMsg
+	return threadsList, msgList, rawMsgList, attachList, firstMsg, lastMsg
 }
