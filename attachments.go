@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -119,7 +120,7 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 }
 
 // GetAttachmentsDetails from api
-func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, user User, svc *gmail.Service, wgi *sync.WaitGroup) {
+func GetAttachmentsDetails(attachments *[]Attachment, rateLimit *bool, att MessageAttachment, user User, svc *gmail.Service, wgi *sync.WaitGroup) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -143,6 +144,11 @@ func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, use
 	attachmentSer := svc.Users.Messages.Attachments.Get(a.Owner, a.MsgID, a.AttachID)
 
 	attachment, err := attachmentSer.Do()
+	if strings.Contains("rateLimitExceeded", err.Error()) {
+		*rateLimit = true
+		wgi.Done()
+	}
+
 	if err == nil {
 
 		if attachment.Size != 0 {
@@ -156,6 +162,7 @@ func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, use
 		}
 
 	} else {
+
 		HandleError(proc, "Unable to retrieve attachment ID "+a.AttachID+"from msgID:"+a.MsgID, err, true)
 
 	}
@@ -165,7 +172,7 @@ func GetAttachmentsDetails(attachments *[]Attachment, att MessageAttachment, use
 }
 
 // ProccessAttachments get attachment data
-func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachment) []Attachment {
+func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachment) ([]Attachment, bool) {
 
 	proc := ServiceLog{
 		Start:   time.Now(),
@@ -180,12 +187,19 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 	var wgAttach sync.WaitGroup
 
+	rateLimit := false
+
 	if len(attach) != 0 {
 
 		for _, att := range attach {
 
 			wgAttach.Add(1)
-			go GetAttachmentsDetails(&attachments, att, user, svc, &wgAttach)
+			go GetAttachmentsDetails(&attachments, &rateLimit, att, user, svc, &wgAttach)
+
+			if rateLimit {
+				break
+				return attachments, rateLimit
+			}
 
 		}
 
@@ -193,7 +207,7 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 	wgAttach.Wait()
 
-	return attachments
+	return attachments, rateLimit
 }
 
 // SaveAttachments save attachments
