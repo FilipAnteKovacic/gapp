@@ -40,8 +40,4 @@ docker run  -e "MONGO_CONN=localhost:27017" -e "MONGO_DB=gmail" -e "URL=http://l
 # Tasks
 
 ## Sync
-- [ ] Handle exced limit
-
-## Single email view
-- [ ] Load message images
-- [*] Threads collapse
+- [ ] Speed up attachment save
