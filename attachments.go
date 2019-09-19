@@ -66,7 +66,6 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 			}
 
 			gridFile.SetContentType(attch.ContentType)
-			gridFile.SetChunkSize(5120)
 
 			attch.GridID = (gridFile.Id().(bson.ObjectId))
 
@@ -79,7 +78,7 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 			reader := bytes.NewReader(decoded)
 
 			// make a buffer to keep chunks that are read
-			buf := make([]byte, 5120)
+			buf := make([]byte, 256000)
 			for {
 				// read a chunk
 				n, err := reader.Read(buf)

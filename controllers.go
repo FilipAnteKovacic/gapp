@@ -378,7 +378,7 @@ var AttachController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 
 			defer gridFile.Close()
 
-			fileHeader := make([]byte, 5120)
+			fileHeader := make([]byte, 256000)
 			gridFile.Read(fileHeader)
 
 			gridFile.Seek(0, 0)
