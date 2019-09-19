@@ -52,7 +52,7 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 
 	if err != nil {
 
-		if attch.Size > 150000 {
+		if attch.Size > 15000000 {
 
 			DB := mgo.Database{
 				Name:    os.Getenv("MONGO_DB"),
