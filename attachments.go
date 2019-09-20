@@ -43,20 +43,22 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 
 	defer SaveLog(proc)
 
-	mongoC := syncSession.DB(os.Getenv("MONGO_DB")).C("attachments")
+	MS := MongoSession()
+	mongoC := MS.DB(os.Getenv("MONGO_DB")).C("attachments")
+	defer MS.Close()
 
 	queryCheck := bson.M{"owner": attch.Owner, "attachID": attch.AttachID}
 
 	actRes := Attachment{}
-	err := mongoC.Find(queryCheck).One(&actRes)
+	err := mongoC.Find(queryCheck).Select(bson.M{"_id": 1}).One(&actRes)
 
 	if err != nil {
 
-		if attch.Size > 15000000 {
+		if attch.Size > 10000000 {
 
 			DB := mgo.Database{
 				Name:    os.Getenv("MONGO_DB"),
-				Session: syncSession,
+				Session: MS,
 			}
 			gridFile, err := DB.GridFS("attachments").Create(attch.Filename)
 			if err != nil {
@@ -78,7 +80,7 @@ func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 			reader := bytes.NewReader(decoded)
 
 			// make a buffer to keep chunks that are read
-			buf := make([]byte, 256000)
+			buf := make([]byte, 261120)
 			for {
 				// read a chunk
 				n, err := reader.Read(buf)
@@ -209,7 +211,7 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 
 		for _, att := range attach {
 
-			time.Sleep((1 * time.Second) / 10)
+			time.Sleep((1 * time.Second) / 20)
 			wgAttach.Add(1)
 			go GetAttachmentsDetails(&attachments, att, user, svc, &wgAttach)
 
