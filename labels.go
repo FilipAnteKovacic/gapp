@@ -37,8 +37,9 @@ func CRUDLabel(label Label) {
 	}
 
 	defer SaveLog(proc)
-
-	mongoC := syncSession.DB(os.Getenv("MONGO_DB")).C("labels")
+	DB := MongoSession()
+	defer DB.Close()
+	mongoC := DB.DB(os.Getenv("MONGO_DB")).C("labels")
 
 	queryCheck := bson.M{"labelID": label.LabelID, "owner": label.Owner}
 

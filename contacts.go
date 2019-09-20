@@ -61,7 +61,9 @@ func CRUDContact(p Contact) {
 
 	defer SaveLog(proc)
 
-	mongoC := syncSession.DB(os.Getenv("MONGO_DB")).C("contacts")
+	DB := MongoSession()
+	defer DB.Close()
+	mongoC := DB.DB(os.Getenv("MONGO_DB")).C("contacts")
 
 	queryCheck := bson.M{"owner": p.Owner, "gid": p.GID}
 

@@ -49,12 +49,14 @@ func CRUDThread(thread Thread, wgi *sync.WaitGroup) {
 		Name:    "CRUDThread",
 	}
 
-	mongoC := syncSession.DB(os.Getenv("MONGO_DB")).C("threads")
+	MS := MongoSession()
+	mongoC := MS.DB(os.Getenv("MONGO_DB")).C("threads")
+	defer MS.Close()
 
 	queryCheck := bson.M{"threadID": thread.ThreadID, "owner": thread.Owner}
 
 	actRes := Thread{}
-	err := mongoC.Find(queryCheck).One(&actRes)
+	err := mongoC.Find(queryCheck).Select(bson.M{"_id": 1}).One(&actRes)
 
 	if err != nil {
 

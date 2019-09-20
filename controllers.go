@@ -468,8 +468,6 @@ var SyncController = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 		if r.Method == "POST" {
 
-			syncSession = SyncMongoSession()
-
 			if r.FormValue("labels") != "" && u.Token != nil {
 
 				s := Syncer{

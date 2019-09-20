@@ -150,7 +150,9 @@ func CRUDSyncer(sync Syncer) {
 	defer SaveLog(proc)
 	sync.Duration = sync.End.Sub(sync.Start).String()
 
-	mongoC := syncSession.DB(os.Getenv("MONGO_DB")).C("syncers")
+	DB := MongoSession()
+	defer DB.Close()
+	mongoC := DB.DB(os.Getenv("MONGO_DB")).C("syncers")
 
 	queryCheck := bson.M{"owner": sync.Owner, "query": sync.Query, "start": sync.Start}
 
@@ -183,8 +185,6 @@ func CRUDSyncer(sync Syncer) {
 func DailySync() {
 
 	for {
-
-		syncSession = SyncMongoSession()
 
 		unfinishedSyncers := GetUnfinishedSyncers()
 

@@ -92,12 +92,14 @@ func CRUDThreadMessage(msg Message, wgi *sync.WaitGroup) {
 
 	defer SaveLog(proc)
 
-	mongoC := syncSession.DB(os.Getenv("MONGO_DB")).C("messages")
+	MS := MongoSession()
+	mongoC := MS.DB(os.Getenv("MONGO_DB")).C("messages")
+	defer MS.Close()
 
 	queryCheck := bson.M{"owner": msg.Owner, "msgID": msg.MsgID, "threadID": msg.ThreadID}
 
 	actRes := Message{}
-	err := mongoC.Find(queryCheck).One(&actRes)
+	err := mongoC.Find(queryCheck).Select(bson.M{"_id": 1}).One(&actRes)
 
 	if err != nil {
 
@@ -175,12 +177,14 @@ func CRUDRawMessage(msg RawMessage, wgi *sync.WaitGroup) {
 
 	defer SaveLog(proc)
 
-	mongoC := syncSession.DB(os.Getenv("MONGO_DB")).C("messagesRaw")
+	MS := MongoSession()
+	mongoC := MS.DB(os.Getenv("MONGO_DB")).C("messagesRaw")
+	defer MS.Close()
 
 	queryCheck := bson.M{"owner": msg.Owner, "msgID": msg.MsgID, "threadID": msg.ThreadID}
 
 	actRes := RawMessage{}
-	err := mongoC.Find(queryCheck).One(&actRes)
+	err := mongoC.Find(queryCheck).Select(bson.M{"_id": 1}).One(&actRes)
 
 	if err != nil {
 

@@ -15,7 +15,6 @@ import (
 )
 
 var systemSession *mgo.Session
-var syncSession *mgo.Session
 var mgoSession *mgo.Session
 
 // MongoSession generate mongo session
@@ -41,17 +40,6 @@ func SystemMongoSession() *mgo.Session {
 		log.Fatalln("Failed to start the Mongo session: ", err)
 	}
 	return systemSession.Clone()
-}
-
-// SyncMongoSession gen  sessions for syncers
-func SyncMongoSession() *mgo.Session {
-
-	var err error
-	syncSession, err = mgo.Dial(os.Getenv("MONGO_CONN"))
-	if err != nil {
-		log.Fatalln("Failed to start the Mongo session: ", err)
-	}
-	return syncSession.Clone()
 }
 
 //ServiceLog log structure
