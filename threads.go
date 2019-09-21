@@ -39,6 +39,31 @@ type Thread struct {
 	InternalDate time.Time     `json:"internalDate" bson:"internalDate,omitempty"`
 }
 
+// SaveThreads save threads
+func SaveThreads(threads []Thread) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "function",
+		Service: "gapp",
+		Name:    "SaveThreads",
+	}
+
+	defer SaveLog(proc)
+
+	if len(threads) != 0 {
+		var wgThread sync.WaitGroup
+		for _, t := range threads {
+			time.Sleep((1 * time.Second) / 10)
+			wgThread.Add(1)
+			go CRUDThread(t, &wgThread)
+		}
+		wgThread.Wait()
+		return
+	}
+	return
+}
+
 // CRUDThread save attachment
 func CRUDThread(thread Thread, wgi *sync.WaitGroup) {
 
@@ -485,30 +510,6 @@ func GetThreadsDetails(threadsList *[]gmail.Thread, tID string, svc *gmail.Servi
 	wgi.Done()
 	return
 
-}
-
-// SaveThreads save threads
-func SaveThreads(threads []Thread) {
-
-	proc := ServiceLog{
-		Start:   time.Now(),
-		Type:    "function",
-		Service: "gapp",
-		Name:    "SaveThreads",
-	}
-
-	defer SaveLog(proc)
-
-	if len(threads) != 0 {
-		var wgThread sync.WaitGroup
-		for _, t := range threads {
-			wgThread.Add(1)
-			go CRUDThread(t, &wgThread)
-		}
-		wgThread.Wait()
-		return
-	}
-	return
 }
 
 //ProccessThreads standard threads

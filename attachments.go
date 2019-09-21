@@ -31,6 +31,31 @@ type Attachment struct {
 	Data        string            `json:"data" bson:"data,omitempty"`
 }
 
+// SaveAttachments save attachments
+func SaveAttachments(attachments []Attachment) {
+
+	proc := ServiceLog{
+		Start:   time.Now(),
+		Type:    "function",
+		Service: "gapp",
+		Name:    "SaveAttachments",
+	}
+
+	defer SaveLog(proc)
+
+	var wgAttach sync.WaitGroup
+	if len(attachments) != 0 {
+		for _, a := range attachments {
+			time.Sleep((1 * time.Second) / 10)
+			wgAttach.Add(1)
+			go CRUDAttachment(a, &wgAttach)
+		}
+	}
+
+	wgAttach.Wait()
+	return
+}
+
 // CRUDAttachment save attachment
 func CRUDAttachment(attch Attachment, wgi *sync.WaitGroup) {
 
@@ -222,30 +247,6 @@ func ProccessAttachments(svc *gmail.Service, user User, attach []MessageAttachme
 	wgAttach.Wait()
 
 	return attachments
-}
-
-// SaveAttachments save attachments
-func SaveAttachments(attachments []Attachment) {
-
-	proc := ServiceLog{
-		Start:   time.Now(),
-		Type:    "function",
-		Service: "gapp",
-		Name:    "SaveAttachments",
-	}
-
-	defer SaveLog(proc)
-
-	var wgAttach sync.WaitGroup
-	if len(attachments) != 0 {
-		for _, a := range attachments {
-			wgAttach.Add(1)
-			go CRUDAttachment(a, &wgAttach)
-		}
-	}
-
-	wgAttach.Wait()
-	return
 }
 
 // GetAttachment return attachment

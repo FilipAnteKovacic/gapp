@@ -71,6 +71,7 @@ func SaveMessages(messages []Message) {
 	if len(messages) != 0 {
 		var wgMessages sync.WaitGroup
 		for _, m := range messages {
+			time.Sleep((1 * time.Second) / 10)
 			wgMessages.Add(1)
 			go CRUDThreadMessage(m, &wgMessages)
 		}
